@@ -1,0 +1,4 @@
+accessWidener v2 named
+
+accessible field net/minecraft/stat/ServerStatHandler file Ljava/io/File;
+accessible field net/minecraft/stat/StatHandler statMap Lit/unimi/dsi/fastutil/objects/Object2IntMap;
