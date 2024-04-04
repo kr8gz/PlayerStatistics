@@ -1,3 +1,5 @@
 {
+  "playerstatistics.database.exception.no_data": "No data found",
+  "playerstatistics.argument.statistic.unknown": "Unknown statistic '%s'",
   "playerstatistics.database.exception.initializing": "Database is currently initializing, please wait"
 }

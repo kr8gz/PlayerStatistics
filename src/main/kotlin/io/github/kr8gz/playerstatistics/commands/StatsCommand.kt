@@ -6,7 +6,7 @@ import com.mojang.brigadier.context.CommandContext
 import com.mojang.brigadier.exceptions.DynamicCommandExceptionType
 import com.mojang.brigadier.exceptions.SimpleCommandExceptionType
 import io.github.kr8gz.playerstatistics.database.Database
-import io.github.kr8gz.playerstatistics.database.Database.updatePlayerStatistics
+import io.github.kr8gz.playerstatistics.database.Database.Updater
 import kotlinx.coroutines.launch
 import net.minecraft.command.CommandRegistryAccess
 import net.minecraft.command.CommandSource
@@ -27,8 +27,9 @@ import net.minecraft.util.Identifier
 typealias ServerCommandContext = CommandContext<ServerCommandSource>
 
 class StatsCommand(
-    private val dispatcher: CommandDispatcher<ServerCommandSource>,
-    private val registryAccess: CommandRegistryAccess) {
+    dispatcher: CommandDispatcher<ServerCommandSource>,
+    private val registryAccess: CommandRegistryAccess,
+) {
     private companion object {
         const val STAT_TYPE_ARGUMENT = "type"
         const val STAT_ARGUMENT = "stat"
@@ -44,7 +45,7 @@ class StatsCommand(
         }
 
         val INVALID_CRITERION_EXCEPTION = DynamicCommandExceptionType { name ->
-            Text.stringifiedTranslatable("argument.criteria.invalid", name)
+            Text.stringifiedTranslatable("playerstatistics.argument.statistic.unknown", name)
         }
 
         val DATABASE_INITIALIZING_EXCEPTION = SimpleCommandExceptionType(
@@ -52,18 +53,19 @@ class StatsCommand(
         )
     }
 
-    private inline fun useDatabase(context: ServerCommandContext, crossinline command: Database.() -> Unit): Int {
-        if (Database.isInitializing) throw DATABASE_INITIALIZING_EXCEPTION.create()
+    private inline fun useDatabase(context: ServerCommandContext, crossinline command: suspend Database.() -> Unit): Int {
+        if (Database.Initializer.inProgress) throw DATABASE_INITIALIZING_EXCEPTION.create()
         Database.launch {
             context.source.server.playerManager.playerList.forEach {
-                updatePlayerStatistics(it.statHandler)
+                Updater.updateStats(it.statHandler)
             }
-        }.invokeOnCompletion { Database.command() }
+            Database.command()
+        }
         return 0 // no meaningful immediate return value
     }
 
     private fun <T : ArgumentBuilder<ServerCommandSource, T>> T.executesWithStatArgument(command: (String, ServerCommandContext) -> Int): T {
-        fun <T : ArgumentBuilder<ServerCommandSource, T>> T.executesWithStatName(statNameSupplier: (ServerCommandContext) -> String): T {
+        fun <T : ArgumentBuilder<ServerCommandSource, T>> T.executesWithCheckedStatName(statNameSupplier: (ServerCommandContext) -> String): T {
             return this.executes { context ->
                 val statName = statNameSupplier(context)
                 if (statName in ALL_STATS) {
@@ -89,7 +91,7 @@ class StatsCommand(
                         val statType = RegistryEntryArgumentType.getRegistryEntry(context, STAT_TYPE_ARGUMENT, RegistryKeys.STAT_TYPE).value()
                         CommandSource.suggestIdentifiers(statType.registry.ids, builder)
                     }
-                    .executesWithStatName { context ->
+                    .executesWithCheckedStatName { context ->
                         val type = RegistryEntryArgumentType.getRegistryEntry(context, STAT_TYPE_ARGUMENT, RegistryKeys.STAT_TYPE)
                         val id = IdentifierArgumentType.getIdentifier(context, STAT_ARGUMENT)
                         getStatName(type.registryKey(), id)
@@ -98,23 +100,26 @@ class StatsCommand(
             )
             // merge custom stats with stat type argument
             .then(argument(STAT_ARGUMENT, RegistryEntryArgumentType.registryEntry(registryAccess, RegistryKeys.CUSTOM_STAT))
-                .executesWithStatName { context ->
+                .executesWithCheckedStatName { context ->
                     val id = RegistryEntryArgumentType.getRegistryEntry(context, STAT_ARGUMENT, RegistryKeys.CUSTOM_STAT)
                     getStatName(Registries.STAT_TYPE.getKey(Stats.CUSTOM).get(), id.value())
                 }
             )
     }
 
-    fun register() {
+    init {
         dispatcher.register(literal("stats")
             .then(literal("leaderboard").executesWithStatArgument { stat, context ->
                 useDatabase(context) {
-                    context.source.sendMessage(Text.of("server-wide leaderboard for $stat"))
+                    val leaderboard = Database.Leaderboard.forStat(stat, context.source.player)
+                    context.source.sendMessage(Text.of(leaderboard.joinToString("\n")))
                 }
             })
             .then(literal("total").executesWithStatArgument { stat, context ->
                 useDatabase(context) {
-                    context.source.sendMessage(Text.of("server-wide total for $stat"))
+                    val total = serverTotal(stat)
+                    val contributed = context.source.player?.let { statForPlayer(stat, it.uuid) }
+                    context.source.sendMessage(Text.of("$contributed/$total"))
                 }
             })
             .then(literal("player")
@@ -122,14 +127,16 @@ class StatsCommand(
                     .executesWithStatArgument { stat, context ->
                         val players = GameProfileArgumentType.getProfileArgument(context, PLAYER_ARGUMENT)
                         useDatabase(context) {
-                            players.forEach {
-                                context.source.sendMessage(Text.of("$stat for ${it.name}"))
+                            players.forEach { player ->
+                                val value = statForPlayer(stat, player.id)
+                                context.source.sendMessage(Text.of(value.toString()))
                             }
                         }
                     }
                 )
             )
             .then(literal("top")
+                // TODO optional player argument -> context.source.getPlayerOrThrow()
                 .then(argument(PLAYER_ARGUMENT, GameProfileArgumentType.gameProfile()).executes { context ->
                     val players = GameProfileArgumentType.getProfileArgument(context, PLAYER_ARGUMENT)
                     useDatabase(context) {
@@ -139,6 +146,8 @@ class StatsCommand(
                     }
                 })
             )
+            // /stats page <page>
+            // /stats share <code>
         )
     }
 }
