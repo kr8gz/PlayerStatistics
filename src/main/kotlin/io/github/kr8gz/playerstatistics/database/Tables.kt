@@ -21,8 +21,8 @@ object Players : Table("players") {
     const val name = "name"
 
     override val schema = listOf(
-            "$uuid BINARY(16) NOT NULL PRIMARY KEY",
-            "$name VARCHAR(16) NOT NULL",
+        "$uuid BINARY(16) NOT NULL PRIMARY KEY",
+        "$name VARCHAR(16) NOT NULL COLLATE NOCASE",
     )
 }
 
@@ -32,9 +32,9 @@ object Statistics : Table("statistics") {
     const val value = "value"
 
     override val schema = listOf(
-            "$playerUUID BINARY(16) NOT NULL",
-            "$statistic TEXT NOT NULL",
-            "$value INT NOT NULL",
-            "PRIMARY KEY ($playerUUID, $statistic)",
+        "$playerUUID BINARY(16) NOT NULL",
+        "$statistic TEXT NOT NULL",
+        "$value INT NOT NULL",
+        "PRIMARY KEY ($playerUUID, $statistic)",
     )
 }

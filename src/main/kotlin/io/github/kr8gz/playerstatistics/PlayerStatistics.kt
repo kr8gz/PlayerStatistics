@@ -1,6 +1,6 @@
 package io.github.kr8gz.playerstatistics
 
-import io.github.kr8gz.playerstatistics.commands.StatsCommand
+import io.github.kr8gz.playerstatistics.command.StatsCommand
 import io.github.kr8gz.playerstatistics.database.Database
 import io.github.kr8gz.playerstatistics.database.Database.Updater
 import kotlinx.coroutines.launch

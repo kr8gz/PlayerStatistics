@@ -1,12 +1,10 @@
 package io.github.kr8gz.playerstatistics.database
 
-import com.google.common.collect.ImmutableList
 import com.mojang.authlib.GameProfile
 import io.github.kr8gz.playerstatistics.PlayerStatistics
 import io.github.kr8gz.playerstatistics.access.ServerStatHandlerMixinAccess
 import kotlinx.atomicfu.atomic
 import kotlinx.coroutines.*
-import net.minecraft.entity.player.PlayerEntity
 import net.minecraft.server.MinecraftServer
 import net.minecraft.stat.ServerStatHandler
 import net.minecraft.util.WorldSavePath
@@ -14,7 +12,7 @@ import org.apache.commons.io.FilenameUtils
 import java.nio.file.Files
 import java.sql.Connection
 import java.sql.DriverManager
-import java.util.UUID
+import java.util.*
 import kotlin.streams.asSequence
 import kotlin.time.Duration.Companion.seconds
 
@@ -36,6 +34,18 @@ object Database : CoroutineScope {
                 ?: DriverManager.getConnection(DATABASE_URL).also { connection = it }
         }
     }
+
+    private val playerNameMap by lazy {
+        with(Players) {
+            connection.prepareStatement("SELECT * FROM $Players").executeQuery().use { rs ->
+                generateSequence {
+                    rs.takeIf { it.next() }?.run { UUID.fromString(getString(uuid)) to getString(name) }
+                }.toMap(HashMap())
+            }
+        }
+    }
+
+    val playerNames get() = playerNameMap.values.sorted()
 
     object Initializer {
         private var job: Job? = null
@@ -82,15 +92,16 @@ object Database : CoroutineScope {
     object Updater {
         suspend fun updateProfile(profile: GameProfile): Unit = with(Players) {
             coroutineScope {
-                connection.prepareStatement("INSERT INTO $Players ($uuid, $name) VALUES (?1, ?2) ON CONFLICT($uuid) DO UPDATE SET $name = ?2").run {
+                connection.prepareStatement("INSERT INTO $Players ($uuid, $name) VALUES (?, ?) ON CONFLICT($uuid) DO UPDATE SET $name = excluded.$name").run {
                     setString(1, profile.id.toString())
                     setString(2, profile.name)
                     executeUpdate()
                 }
+                playerNameMap[profile.id] = profile.name
             }
         }
 
-        suspend fun updateStats(statHandler: ServerStatHandler, changedOnly: Boolean = true) = with(Statistics) {
+        suspend fun updateStats(statHandler: ServerStatHandler, changedOnly: Boolean = true): Unit = with(Statistics) {
             val statMap = when {
                 changedOnly -> (statHandler as ServerStatHandlerMixinAccess).takeChangedStats()
                 else -> statHandler.statMap
@@ -114,16 +125,12 @@ object Database : CoroutineScope {
         }
     }
 
-    // TODO command suggestion list (string argument type instead of game profile -> never multiple, query using join players name
-    var playerNames: List<String> = mutableListOf()
-        get() = ImmutableList.copyOf(field)
-        private set // TODO during init and on profile update
-
     object Leaderboard {
         data class Entry(val rank: Int, val key: String, val value: Int)
 
-        suspend fun forStat(stat: String, highlight: PlayerEntity? = null, page: Int = 1): List<Entry> = coroutineScope {
-            val pageSize = 9 // 1 row less than default chat height for header
+        private const val pageSize = 9 // 1 row less than default chat height for header
+
+        suspend fun forStat(stat: String, highlightName: String? = null, page: Int): List<Entry> = coroutineScope {
             val query = """
                 WITH leaderboard AS (
                     SELECT *, ROW_NUMBER() OVER (ORDER BY ${RankedStatistics.rank}, ${Statistics.playerUUID}) pos
@@ -131,7 +138,7 @@ object Database : CoroutineScope {
                     JOIN $Players ON ${Players.uuid} = ${Statistics.playerUUID}
                     WHERE ${Statistics.statistic} = ?
                 ),
-                highlight AS (SELECT pos highlight FROM leaderboard WHERE ${Statistics.playerUUID} = ? LIMIT 1)
+                highlight AS (SELECT pos highlight FROM leaderboard WHERE ${Players.name} = ? LIMIT 1)
                 SELECT
                     ${RankedStatistics.rank}, ${Players.name}, ${Statistics.value},
                     $pageSize - (highlight IS NOT NULL) page_offset
@@ -141,38 +148,72 @@ object Database : CoroutineScope {
                    OR pos = highlight
                 ORDER BY pos
             """
-
             connection.prepareStatement(query).run {
                 setString(1, stat)
-                setString(2, highlight?.uuidAsString)
+                setString(2, highlightName)
+                executeQuery()
+            }.use { rs ->
+                generateSequence {
+                    rs.takeIf { it.next() }?.run {
+                        Entry(getInt(RankedStatistics.rank), getString(Players.name), getInt(Statistics.value))
+                    }
+                }.toList()
+            }
+        }
 
-                executeQuery().use { rs ->
-                    generateSequence {
-                        rs.takeIf { it.next() }?.run {
-                            Entry(getInt(RankedStatistics.rank), getString(Players.name), getInt(Statistics.value))
-                        }
-                    }.toList()
-                }
+        suspend fun forPlayer(name: String, page: Int): List<Entry> = coroutineScope {
+            val query = """
+                WITH leaderboard AS (
+                    SELECT *, ROW_NUMBER() OVER (ORDER BY ${RankedStatistics.rank}, ${Statistics.value} DESC) pos
+                    FROM $RankedStatistics
+                    JOIN $Players ON ${Players.uuid} = ${Statistics.playerUUID}
+                    WHERE ${Players.name} = ?
+                )
+                SELECT ${RankedStatistics.rank}, ${Statistics.statistic}, ${Statistics.value}
+                FROM leaderboard
+                WHERE pos > ${pageSize * (page - 1)} AND pos <= ${pageSize * page}
+                ORDER BY pos
+            """
+            connection.prepareStatement(query).run {
+                setString(1, name)
+                executeQuery()
+            }.use { rs ->
+                generateSequence {
+                    rs.takeIf { it.next() }?.run {
+                        Entry(getInt(RankedStatistics.rank), getString(Statistics.statistic), getInt(Statistics.value))
+                    }
+                }.toList()
             }
         }
     }
 
-    suspend fun serverTotal(stat: String): Int = with(Statistics) {
+    suspend fun serverTotal(stat: String): Long = with(Statistics) {
         coroutineScope {
             val sum = "sum"
-            connection.prepareStatement("SELECT SUM($value) $sum FROM $Statistics WHERE $statistic = ?").run {
-                setString(1, stat)
-                executeQuery().use { rs -> rs.next(); rs.getInt(sum) }
-            }
+            connection.prepareStatement("SELECT SUM($value) $sum FROM $Statistics WHERE $statistic = ?")
+                .run { setString(1, stat); executeQuery() }
+                .use { rs -> rs.next(); rs.getLong(sum) }
         }
     }
 
-    suspend fun statForPlayer(stat: String, uuid: UUID): Int = with(Statistics) {
-        coroutineScope {
-            connection.prepareStatement("SELECT $value FROM $Statistics WHERE $statistic = ? AND $playerUUID = ?").run {
-                setString(1, stat)
-                setString(2, uuid.toString())
-                executeQuery().use { rs -> if (rs.next()) rs.getInt(value) else 0 }
+    /** @return `null` if the player was not found in the database;
+     *          rank = 0 if the value is 0;
+     *          key = player name
+     */
+    suspend fun statForPlayer(stat: String, name: String): Leaderboard.Entry? = coroutineScope {
+        val query = """
+            SELECT ${RankedStatistics.rank}, ${Players.name}, COALESCE(${Statistics.value}, 0) ${Statistics.value}
+            FROM $Players
+            LEFT JOIN $RankedStatistics ON ${Players.uuid} = ${Statistics.playerUUID} AND ${Statistics.statistic} = ?
+            WHERE ${Players.name} = ?
+        """
+        connection.prepareStatement(query).run {
+            setString(1, stat)
+            setString(2, name)
+            executeQuery()
+        }.use { rs ->
+            rs.takeIf { it.next() }?.run {
+                Leaderboard.Entry(getInt(RankedStatistics.rank), getString(Players.name), getInt(Statistics.value))
             }
         }
     }

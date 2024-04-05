@@ -1,16 +1,16 @@
-package io.github.kr8gz.playerstatistics.commands
+package io.github.kr8gz.playerstatistics.command
 
 import com.mojang.brigadier.CommandDispatcher
+import com.mojang.brigadier.arguments.IntegerArgumentType
+import com.mojang.brigadier.arguments.StringArgumentType
 import com.mojang.brigadier.builder.ArgumentBuilder
 import com.mojang.brigadier.context.CommandContext
 import com.mojang.brigadier.exceptions.DynamicCommandExceptionType
 import com.mojang.brigadier.exceptions.SimpleCommandExceptionType
 import io.github.kr8gz.playerstatistics.database.Database
-import io.github.kr8gz.playerstatistics.database.Database.Updater
 import kotlinx.coroutines.launch
 import net.minecraft.command.CommandRegistryAccess
 import net.minecraft.command.CommandSource
-import net.minecraft.command.argument.GameProfileArgumentType
 import net.minecraft.command.argument.IdentifierArgumentType
 import net.minecraft.command.argument.RegistryEntryArgumentType
 import net.minecraft.registry.Registries
@@ -30,11 +30,23 @@ class StatsCommand(
     dispatcher: CommandDispatcher<ServerCommandSource>,
     private val registryAccess: CommandRegistryAccess,
 ) {
-    private companion object {
-        const val STAT_TYPE_ARGUMENT = "type"
-        const val STAT_ARGUMENT = "stat"
-        const val PLAYER_ARGUMENT = "player"
+    private object Arguments {
+        const val STAT_TYPE = "type"
+        const val STAT = "stat"
+        const val PLAYER = "player"
+        const val PAGE = "page"
+    }
 
+    private object Exceptions {
+        val DATABASE_INITIALIZING = SimpleCommandExceptionType(
+            Text.translatable("playerstatistics.database.initializing")
+        )
+        val UNKNOWN_STATISTIC = DynamicCommandExceptionType { name ->
+            Text.stringifiedTranslatable("playerstatistics.argument.statistic.unknown", name)
+        }
+    }
+
+    private companion object {
         fun getStatName(statType: RegistryKey<StatType<*>>, identifier: Identifier): String {
             fun Identifier.adjustFormat() = this.toString().replace(':', '.')
             return statType.value.adjustFormat() + ":" + identifier.adjustFormat()
@@ -43,21 +55,13 @@ class StatsCommand(
         val ALL_STATS = Registries.STAT_TYPE.entrySet.flatMap { (key, type) ->
             type.registry.ids.mapNotNull { value -> getStatName(key, value) }
         }
-
-        val INVALID_CRITERION_EXCEPTION = DynamicCommandExceptionType { name ->
-            Text.stringifiedTranslatable("playerstatistics.argument.statistic.unknown", name)
-        }
-
-        val DATABASE_INITIALIZING_EXCEPTION = SimpleCommandExceptionType(
-            Text.translatable("playerstatistics.database.exception.initializing")
-        )
     }
 
     private inline fun useDatabase(context: ServerCommandContext, crossinline command: suspend Database.() -> Unit): Int {
-        if (Database.Initializer.inProgress) throw DATABASE_INITIALIZING_EXCEPTION.create()
+        if (Database.Initializer.inProgress) throw Exceptions.DATABASE_INITIALIZING.create()
         Database.launch {
             context.source.server.playerManager.playerList.forEach {
-                Updater.updateStats(it.statHandler)
+                Database.Updater.updateStats(it.statHandler)
             }
             Database.command()
         }
@@ -71,14 +75,14 @@ class StatsCommand(
                 if (statName in ALL_STATS) {
                     command(statName, context)
                 } else {
-                    throw INVALID_CRITERION_EXCEPTION.create(statName)
+                    throw Exceptions.UNKNOWN_STATISTIC.create(statName)
                 }
             }
         }
 
         return this
             .then(literal("random").executes { context -> command(ALL_STATS.random(), context) })
-            .then(argument(STAT_TYPE_ARGUMENT, RegistryEntryArgumentType.registryEntry(registryAccess, RegistryKeys.STAT_TYPE))
+            .then(argument(Arguments.STAT_TYPE, RegistryEntryArgumentType.registryEntry(registryAccess, RegistryKeys.STAT_TYPE))
                 // hide the minecraft:custom stat category so that custom stats are easier to find (see last branch)
                 .suggests { _, builder ->
                     val types = Registries.STAT_TYPE.streamEntries()
@@ -86,22 +90,22 @@ class StatsCommand(
                         .map { entry -> entry.registryKey().value }
                     CommandSource.suggestIdentifiers(types, builder)
                 }
-                .then(argument(STAT_ARGUMENT, IdentifierArgumentType.identifier())
+                .then(argument(Arguments.STAT, IdentifierArgumentType.identifier())
                     .suggests { context, builder ->
-                        val statType = RegistryEntryArgumentType.getRegistryEntry(context, STAT_TYPE_ARGUMENT, RegistryKeys.STAT_TYPE).value()
+                        val statType = RegistryEntryArgumentType.getRegistryEntry(context, Arguments.STAT_TYPE, RegistryKeys.STAT_TYPE).value()
                         CommandSource.suggestIdentifiers(statType.registry.ids, builder)
                     }
                     .executesWithCheckedStatName { context ->
-                        val type = RegistryEntryArgumentType.getRegistryEntry(context, STAT_TYPE_ARGUMENT, RegistryKeys.STAT_TYPE)
-                        val id = IdentifierArgumentType.getIdentifier(context, STAT_ARGUMENT)
+                        val type = RegistryEntryArgumentType.getRegistryEntry(context, Arguments.STAT_TYPE, RegistryKeys.STAT_TYPE)
+                        val id = IdentifierArgumentType.getIdentifier(context, Arguments.STAT)
                         getStatName(type.registryKey(), id)
                     }
                 )
             )
             // merge custom stats with stat type argument
-            .then(argument(STAT_ARGUMENT, RegistryEntryArgumentType.registryEntry(registryAccess, RegistryKeys.CUSTOM_STAT))
+            .then(argument(Arguments.STAT, RegistryEntryArgumentType.registryEntry(registryAccess, RegistryKeys.CUSTOM_STAT))
                 .executesWithCheckedStatName { context ->
-                    val id = RegistryEntryArgumentType.getRegistryEntry(context, STAT_ARGUMENT, RegistryKeys.CUSTOM_STAT)
+                    val id = RegistryEntryArgumentType.getRegistryEntry(context, Arguments.STAT, RegistryKeys.CUSTOM_STAT)
                     getStatName(Registries.STAT_TYPE.getKey(Stats.CUSTOM).get(), id.value())
                 }
             )
@@ -110,44 +114,45 @@ class StatsCommand(
     init {
         dispatcher.register(literal("stats")
             .then(literal("leaderboard").executesWithStatArgument { stat, context ->
-                useDatabase(context) {
-                    val leaderboard = Database.Leaderboard.forStat(stat, context.source.player)
-                    context.source.sendMessage(Text.of(leaderboard.joinToString("\n")))
-                }
+                useDatabase(context) { context.source.sendLeaderboard(stat, context.source.player?.name?.string) }
             })
             .then(literal("total").executesWithStatArgument { stat, context ->
-                useDatabase(context) {
-                    val total = serverTotal(stat)
-                    val contributed = context.source.player?.let { statForPlayer(stat, it.uuid) }
-                    context.source.sendMessage(Text.of("$contributed/$total"))
-                }
+                useDatabase(context) { context.source.sendServerTotal(stat, context.source.player?.name?.string) }
             })
             .then(literal("player")
-                .then(argument(PLAYER_ARGUMENT, GameProfileArgumentType.gameProfile())
+                .then(argument(Arguments.PLAYER, StringArgumentType.word())
+                    .suggests { _, builder -> CommandSource.suggestMatching(Database.playerNames, builder) }
                     .executesWithStatArgument { stat, context ->
-                        val players = GameProfileArgumentType.getProfileArgument(context, PLAYER_ARGUMENT)
-                        useDatabase(context) {
-                            players.forEach { player ->
-                                val value = statForPlayer(stat, player.id)
-                                context.source.sendMessage(Text.of(value.toString()))
-                            }
-                        }
+                        val player = StringArgumentType.getString(context, Arguments.PLAYER)
+                        useDatabase(context) { context.source.sendPlayerStat(stat, player) }
                     }
                 )
             )
             .then(literal("top")
-                // TODO optional player argument -> context.source.getPlayerOrThrow()
-                .then(argument(PLAYER_ARGUMENT, GameProfileArgumentType.gameProfile()).executes { context ->
-                    val players = GameProfileArgumentType.getProfileArgument(context, PLAYER_ARGUMENT)
+                .executes { context ->
+                    val player = context.source.playerOrThrow.name.string
+                    useDatabase(context) { context.source.sendPlayerTopStats(player) }
+                }
+                .then(argument(Arguments.PLAYER, StringArgumentType.word())
+                    .suggests { _, builder -> CommandSource.suggestMatching(Database.playerNames, builder) }
+                    .executes { context ->
+                        val player = StringArgumentType.getString(context, Arguments.PLAYER)
+                        useDatabase(context) { context.source.sendPlayerTopStats(player) }
+                    }
+                )
+            )
+            .then(literal("page")
+                .then(argument(Arguments.PAGE, IntegerArgumentType.integer(1)).executes { context ->
                     useDatabase(context) {
-                        players.forEach {
-                            context.source.sendMessage(Text.of("${it.name}'s top statistics"))
-                        }
+                        // TODO
                     }
                 })
             )
-            // /stats page <page>
-            // /stats share <code>
+            .then(literal("share").executes { context ->
+                useDatabase(context) {
+                    // TODO share last Text output stored in map with player uuid as key
+                }
+            })
         )
     }
 }

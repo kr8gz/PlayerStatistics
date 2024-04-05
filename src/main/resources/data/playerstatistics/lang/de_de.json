@@ -1,5 +1,16 @@
 {
-  "playerstatistics.database.exception.no_data": "Keine Daten gefunden",
+  "playerstatistics.argument.player.unknown": "Spieler %s wurde in der Datenbank nicht gefunden",
   "playerstatistics.argument.statistic.unknown": "Unbekannte Statistik '%s'",
-  "playerstatistics.database.exception.initializing": "Datenbank wird gerade initialisiert, bitte warten"
+  "playerstatistics.command.player.rank": "(#%s)",
+  "playerstatistics.command.total": "Serverweit insgesamt %s: %s",
+  "playerstatistics.command.total.contributed": "Du hast %s beigetragen (%s%%)",
+  "playerstatistics.database.initializing": "Datenbank wird gerade initialisiert, bitte warten",
+  "playerstatistics.stat_type.minecraft.broken": "%s verbraucht",
+  "playerstatistics.stat_type.minecraft.crafted": "%s hergestellt",
+  "playerstatistics.stat_type.minecraft.dropped": "%s fallen gelassen",
+  "playerstatistics.stat_type.minecraft.killed": "%s erlegt",
+  "playerstatistics.stat_type.minecraft.killed_by": "Von %s getötet",
+  "playerstatistics.stat_type.minecraft.mined": "%s abgebaut",
+  "playerstatistics.stat_type.minecraft.picked_up": "%s aufgesammelt",
+  "playerstatistics.stat_type.minecraft.used": "%s benutzt"
 }
