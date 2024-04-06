@@ -8,10 +8,7 @@ import net.minecraft.item.Item
 import net.minecraft.item.Items
 import net.minecraft.registry.Registries
 import net.minecraft.server.command.ServerCommandSource
-import net.minecraft.text.ClickEvent
-import net.minecraft.text.HoverEvent
-import net.minecraft.text.MutableText
-import net.minecraft.text.Text
+import net.minecraft.text.*
 import net.minecraft.util.Identifier
 import java.text.DecimalFormat
 import java.text.DecimalFormatSymbols
@@ -45,8 +42,6 @@ private fun formatStatName(stat: String) = stat.split(':').map { Identifier.spli
 }
 
 private fun MutableText.addPageFooter(page: Int, max: Int) = if (max <= 1) this else apply {
-    val dashes = Text.literal("-".repeat(10)).withColor(Colors.GRAY)
-
     fun MutableText.styleButton(newPage: Int, translationKey: String, activated: Boolean): MutableText {
         return if (activated) withColor(Colors.WHITE).styled {
             it.withHoverEvent(HoverEvent(HoverEvent.Action.SHOW_TEXT, Text.translatable(translationKey)))
@@ -55,25 +50,33 @@ private fun MutableText.addPageFooter(page: Int, max: Int) = if (max <= 1) this 
     }
 
     append("\n")
-
-    append(dashes)
+    append(Text.literal("-----").withColor(Colors.GRAY))
     append(Text.literal(" ◀ [ ").styleButton(
         newPage = page - 1,
         translationKey = "playerstatistics.command.page.previous",
         activated = page > 1,
     ))
-
     append(Text.translatable("playerstatistics.command.page",
         Text.literal(page.toString()),
         Text.literal(max.toString()),
     ))
-
     append(Text.literal(" ] ▶ ").styleButton(
         newPage = page + 1,
         translationKey = "playerstatistics.command.page.next",
         activated = page < max,
     ))
-    append(dashes)
+    append(Text.literal("--").withColor(Colors.GRAY))
+    addShareButton()
+    append(" ")
+    append(Text.literal("-----").withColor(Colors.GRAY))
+}
+
+private fun MutableText.addShareButton() = apply {
+    append(" ")
+    append(Texts.bracketed(Text.translatable("playerstatistics.command.share")).styled {
+        it.withHoverEvent(HoverEvent(HoverEvent.Action.SHOW_TEXT, Text.translatable("playerstatistics.command.share.hint")))
+            .withClickEvent(ClickEvent(ClickEvent.Action.RUN_COMMAND, "/stats share"))
+    })
 }
 
 suspend fun ServerCommandSource.sendLeaderboard(stat: String, page: Int = 1) {
@@ -106,7 +109,7 @@ suspend fun ServerCommandSource.sendServerTotal(stat: String) {
             }
         }
     }
-    sendFeedback(content)
+    sendFeedback(content.copy().addShareButton())
     storeShareData(label, content)
 }
 
@@ -118,7 +121,7 @@ suspend fun ServerCommandSource.sendPlayerStat(stat: String, playerName: String)
             append(statText)
             if (rank > 0) append(" (#$rank)")
         }
-        sendFeedback(content)
+        sendFeedback(content.copy().addShareButton())
         storeShareData(label, content)
     } ?: sendError(Text.translatable("playerstatistics.argument.player.unknown", playerName))
 }

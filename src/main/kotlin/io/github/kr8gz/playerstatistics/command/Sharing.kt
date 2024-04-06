@@ -19,7 +19,7 @@ fun ServerCommandSource.shareStoredData() {
         val hoverText = Texts.bracketed(Text.translatable("playerstatistics.command.share.hover")).styled {
             it.withHoverEvent(HoverEvent(HoverEvent.Action.SHOW_TEXT, content))
         }
-        val message = Text.translatable("playerstatistics.command.share", entity?.displayName ?: name, label)
+        val message = Text.translatable("playerstatistics.command.share.message", entity?.displayName ?: name, label)
         server.playerManager.broadcast(message.append(" ").append(hoverText), false)
     } ?: sendError(Text.translatable("playerstatistics.command.share.unavailable"))
 }
