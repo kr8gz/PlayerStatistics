@@ -125,64 +125,106 @@ object Database : CoroutineScope {
         }
     }
 
-    object Leaderboard {
-        data class Entry(val rank: Int, val key: String, val value: Int)
-
-        private const val pageSize = 9 // 1 row less than default chat height for header
-
-        suspend fun forStat(stat: String, highlightName: String? = null, page: Int): List<Entry> = coroutineScope {
-            val query = """
-                WITH leaderboard AS (
-                    SELECT *, ROW_NUMBER() OVER (ORDER BY ${RankedStatistics.rank}, ${Statistics.playerUUID}) pos
-                    FROM $RankedStatistics
-                    JOIN $Players ON ${Players.uuid} = ${Statistics.playerUUID}
-                    WHERE ${Statistics.statistic} = ?
-                ),
-                highlight AS (SELECT pos highlight FROM leaderboard WHERE ${Players.name} = ? LIMIT 1)
-                SELECT
-                    ${RankedStatistics.rank}, ${Players.name}, ${Statistics.value},
-                    $pageSize - (highlight IS NOT NULL) page_offset
-                FROM leaderboard LEFT JOIN highlight
-                WHERE pos >  page_offset * ${page - 1} + COALESCE(highlight < page_offset * ${page - 1}, 0)
-                  AND pos <= page_offset * $page       + COALESCE(highlight < page_offset * $page,       0)
-                   OR pos = highlight
-                ORDER BY pos
-            """
-            connection.prepareStatement(query).run {
-                setString(1, stat)
-                setString(2, highlightName)
-                executeQuery()
-            }.use { rs ->
-                generateSequence {
-                    rs.takeIf { it.next() }?.run {
-                        Entry(getInt(RankedStatistics.rank), getString(Players.name), getInt(Statistics.value))
+    data class Leaderboard(val pageEntries: List<Entry>, val totalPages: Int) {
+        data class Entry(val rank: Int, val key: String, val value: Int) {
+            companion object {
+                /** @return `null` if the player was not found in the database;
+                 *          rank = 0 if the value is 0;
+                 *          key = player name
+                 */
+                suspend fun of(stat: String, name: String): Entry? = coroutineScope {
+                    val query = """
+                        SELECT ${RankedStatistics.rank}, ${Players.name}, COALESCE(${Statistics.value}, 0) ${Statistics.value}
+                        FROM $Players
+                        LEFT JOIN $RankedStatistics ON ${Players.uuid} = ${Statistics.playerUUID} AND ${Statistics.statistic} = ?
+                        WHERE ${Players.name} = ?
+                    """
+                    connection.prepareStatement(query).run {
+                        setString(1, stat)
+                        setString(2, name)
+                        executeQuery()
+                    }.use { rs ->
+                        rs.takeIf { it.next() }?.run {
+                            Entry(getInt(RankedStatistics.rank), getString(Players.name), getInt(Statistics.value))
+                        }
                     }
-                }.toList()
+                }
             }
         }
 
-        suspend fun forPlayer(name: String, page: Int): List<Entry> = coroutineScope {
-            val query = """
-                WITH leaderboard AS (
-                    SELECT *, ROW_NUMBER() OVER (ORDER BY ${RankedStatistics.rank}, ${Statistics.value} DESC) pos
-                    FROM $RankedStatistics
-                    JOIN $Players ON ${Players.uuid} = ${Statistics.playerUUID}
-                    WHERE ${Players.name} = ?
-                )
-                SELECT ${RankedStatistics.rank}, ${Statistics.statistic}, ${Statistics.value}
-                FROM leaderboard
-                WHERE pos > ${pageSize * (page - 1)} AND pos <= ${pageSize * page}
-                ORDER BY pos
-            """
-            connection.prepareStatement(query).run {
-                setString(1, name)
-                executeQuery()
-            }.use { rs ->
-                generateSequence {
-                    rs.takeIf { it.next() }?.run {
-                        Entry(getInt(RankedStatistics.rank), getString(Statistics.statistic), getInt(Statistics.value))
-                    }
-                }.toList()
+        companion object {
+            private const val pageSize = 9 // 1 row less than default chat height for header
+
+            /** @return key = player name */
+            suspend fun forStat(stat: String, highlightName: String? = null, page: Int): Leaderboard = coroutineScope {
+                val pageCount = "page_count"
+                val query = """
+                    WITH leaderboard AS (
+                        SELECT *, ROW_NUMBER() OVER (ORDER BY ${RankedStatistics.rank}, ${Statistics.playerUUID}) pos
+                        FROM $RankedStatistics
+                        JOIN $Players ON ${Players.uuid} = ${Statistics.playerUUID}
+                        WHERE ${Statistics.statistic} = ?
+                    ),
+                    highlight AS (SELECT pos highlight FROM leaderboard WHERE ${Players.name} = ? LIMIT 1),
+                    page_offset AS (SELECT $pageSize - EXISTS(SELECT 1 FROM highlight) page_offset),
+                    page_count AS (
+                        SELECT CEIL(1.0 * ((SELECT MAX(pos) FROM leaderboard) - (highlight IS NOT NULL)) / page_offset) page_count
+                        FROM page_offset LEFT JOIN highlight
+                    )
+                    SELECT ${RankedStatistics.rank}, ${Players.name}, ${Statistics.value}, page_count
+                    FROM leaderboard LEFT JOIN highlight, page_offset, page_count
+                    WHERE pos >  page_offset * ${page - 1} + COALESCE(highlight < page_offset * ${page - 1}, 0)
+                      AND pos <= page_offset * $page       + COALESCE(highlight < page_offset * $page,       0)
+                       OR pos = highlight
+                    ORDER BY pos
+                """
+                connection.prepareStatement(query).run {
+                    setString(1, stat)
+                    setString(2, highlightName)
+                    executeQuery()
+                }.use { rs ->
+                    var pages: Int? = null
+                    val entries = generateSequence {
+                        rs.takeIf { it.next() }?.run {
+                            if (pages == null) pages = getInt(pageCount)
+                            Entry(getInt(RankedStatistics.rank), getString(Players.name), getInt(Statistics.value))
+                        }
+                    }.toList()
+                    Leaderboard(entries, pages ?: 0)
+                }
+            }
+
+            /** @return key = stat */
+            suspend fun forPlayer(name: String, page: Int): Leaderboard = coroutineScope {
+                val pageCount = "page_count"
+                val query = """
+                    WITH leaderboard AS (
+                        SELECT *, ROW_NUMBER() OVER (ORDER BY ${RankedStatistics.rank}, ${Statistics.value} DESC) pos
+                        FROM $RankedStatistics
+                        JOIN $Players ON ${Players.uuid} = ${Statistics.playerUUID}
+                        WHERE ${Players.name} = ? AND ${Statistics.value} > 0
+                    )
+                    SELECT
+                        ${RankedStatistics.rank}, ${Statistics.statistic}, ${Statistics.value},
+                        CEIL(1.0 * (SELECT MAX(pos) FROM leaderboard) / $pageSize) $pageCount
+                    FROM leaderboard
+                    WHERE pos > ${pageSize * (page - 1)}
+                    ORDER BY pos
+                    LIMIT $pageSize
+                """
+                connection.prepareStatement(query).run {
+                    setString(1, name)
+                    executeQuery()
+                }.use { rs ->
+                    var pages: Int? = null
+                    val entries = generateSequence {
+                        rs.takeIf { it.next() }?.run {
+                            if (pages == null) pages = getInt(pageCount)
+                            Entry(getInt(RankedStatistics.rank), getString(Statistics.statistic), getInt(Statistics.value))
+                        }
+                    }.toList()
+                    Leaderboard(entries, pages ?: 0)
+                }
             }
         }
     }
@@ -193,28 +235,6 @@ object Database : CoroutineScope {
             connection.prepareStatement("SELECT SUM($value) $sum FROM $Statistics WHERE $statistic = ?")
                 .run { setString(1, stat); executeQuery() }
                 .use { rs -> rs.next(); rs.getLong(sum) }
-        }
-    }
-
-    /** @return `null` if the player was not found in the database;
-     *          rank = 0 if the value is 0;
-     *          key = player name
-     */
-    suspend fun statForPlayer(stat: String, name: String): Leaderboard.Entry? = coroutineScope {
-        val query = """
-            SELECT ${RankedStatistics.rank}, ${Players.name}, COALESCE(${Statistics.value}, 0) ${Statistics.value}
-            FROM $Players
-            LEFT JOIN $RankedStatistics ON ${Players.uuid} = ${Statistics.playerUUID} AND ${Statistics.statistic} = ?
-            WHERE ${Players.name} = ?
-        """
-        connection.prepareStatement(query).run {
-            setString(1, stat)
-            setString(2, name)
-            executeQuery()
-        }.use { rs ->
-            rs.takeIf { it.next() }?.run {
-                Leaderboard.Entry(getInt(RankedStatistics.rank), getString(Players.name), getInt(Statistics.value))
-            }
         }
     }
 }

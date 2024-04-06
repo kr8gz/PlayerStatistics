@@ -25,53 +25,58 @@ private fun formatStatName(stat: String): Text {
                 is Block -> formatWithStatType(it.name)
                 is Item -> formatWithStatType(it.name)
                 is EntityType<*> -> formatWithStatType(it.name)
-                else -> Text.translatable("stat.${statId.toTranslationKey()}")
+                is Identifier -> Text.translatable("stat.${statId.toTranslationKey()}")
+                else -> null
             }
         }
     } ?: Text.of(stat)
 }
 
+private fun ServerCommandSource.sendMessageAndStore(message: Text, pageAction: PageAction = null) {
+    sendMessage(message)
+    player?.let {
+        OutputManager.storeOutput(it.uuid, message)
+        OutputManager.registerPageAction(it.uuid, pageAction)
+    }
+}
+
 suspend fun ServerCommandSource.sendLeaderboard(stat: String, highlightName: String?, page: Int = 1) {
     Text.literal("TODO header").apply {
-        Database.Leaderboard.forStat(stat, highlightName, page).forEach { entry ->
-            append("\n${entry.rank}. ${entry.key} - ${entry.value}")
-        }
-    }.let(::sendMessage)
+        Database.Leaderboard.forStat(stat, highlightName, page).pageEntries
+            .forEach { (rank, player, value) -> append("\n$rank. $player - $value") }
+    }.let { sendMessageAndStore(it) { page -> sendLeaderboard(stat, highlightName, page) } }
 }
 
 suspend fun ServerCommandSource.sendServerTotal(stat: String, highlightName: String?) {
     val total = Database.serverTotal(stat)
     Text.translatable("playerstatistics.command.total", formatStatName(stat), total).apply {
         highlightName?.let { name ->
-            Database.statForPlayer(stat, name)?.takeIf { it.rank > 0 }?.let { entry ->
+            Database.Leaderboard.Entry.of(stat, name)?.takeIf { it.value > 0 }?.let { (_, player, value) ->
                 append("\n")
-                val percentage = entry.value.toFloat() / total * 100
-                append(Text.translatable("playerstatistics.command.total.contributed", entry.value, percentage))
+                val percentage = value.toFloat() / total * 100
+                append(Text.translatable("playerstatistics.command.total.contributed", player, value, percentage))
             }
         }
-    }.let(::sendMessage)
+    }.let(::sendMessageAndStore)
 }
 
 suspend fun ServerCommandSource.sendPlayerStat(stat: String, playerName: String) {
-    Database.statForPlayer(stat, playerName)?.let { entry ->
-        Text.literal("${entry.key}: ${entry.value} ").apply {
+    Database.Leaderboard.Entry.of(stat, playerName)?.let { (rank, player, value) ->
+        Text.literal("$player: $value ").apply {
             append(formatStatName(stat))
-            if (entry.rank > 0) {
-                append(" ")
-                append(Text.translatable("playerstatistics.command.player.rank", entry.rank))
-            }
-        }.let(::sendMessage)
+            if (rank > 0) append(" (#$rank)")
+        }.let(::sendMessageAndStore)
     } ?: sendError(formatUnknownPlayerError(playerName))
 }
 
 suspend fun ServerCommandSource.sendPlayerTopStats(playerName: String, page: Int = 1) {
-    Database.Leaderboard.forPlayer(playerName, page).takeIf { it.isNotEmpty() }?.let { leaderboard ->
+    Database.Leaderboard.forPlayer(playerName, page).takeIf { it.totalPages > 0 }?.let { leaderboard ->
         Text.literal("TODO header").apply {
-            leaderboard.forEach { entry ->
-                append("\n${entry.rank}. ")
-                append(formatStatName(entry.key))
-                append(" - ${entry.value}")
+            leaderboard.pageEntries.forEach { (rank, stat, value) ->
+                append("\n#$rank ")
+                append(formatStatName(stat))
+                append(" - $value")
             }
-        }.let(::sendMessage)
+        }.let { sendMessageAndStore(it) { page -> sendPlayerTopStats(playerName, page) } }
     } ?: sendError(formatUnknownPlayerError(playerName))
 }

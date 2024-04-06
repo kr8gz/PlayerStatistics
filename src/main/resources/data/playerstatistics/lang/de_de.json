@@ -1,9 +1,11 @@
 {
   "playerstatistics.argument.player.unknown": "Spieler %s wurde in der Datenbank nicht gefunden",
   "playerstatistics.argument.statistic.unknown": "Unbekannte Statistik '%s'",
+  "playerstatistics.command.page.unavailable": "Keine Seiten für das letzte Ergebnis verfügbar",
   "playerstatistics.command.player.rank": "(#%s)",
+  "playerstatistics.command.share.unavailable": "Keine Ergebnisse zum Teilen verfügbar",
   "playerstatistics.command.total": "Serverweit insgesamt %s: %s",
-  "playerstatistics.command.total.contributed": "Du hast %s beigetragen (%s%%)",
+  "playerstatistics.command.total.contributed": "%s hat %s beigetragen (%s%%)",
   "playerstatistics.database.initializing": "Datenbank wird gerade initialisiert, bitte warten",
   "playerstatistics.stat_type.minecraft.broken": "%s verbraucht",
   "playerstatistics.stat_type.minecraft.crafted": "%s hergestellt",

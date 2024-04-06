@@ -7,6 +7,8 @@ import com.mojang.brigadier.builder.ArgumentBuilder
 import com.mojang.brigadier.context.CommandContext
 import com.mojang.brigadier.exceptions.DynamicCommandExceptionType
 import com.mojang.brigadier.exceptions.SimpleCommandExceptionType
+import io.github.kr8gz.playerstatistics.command.OutputManager.runPageAction
+import io.github.kr8gz.playerstatistics.command.OutputManager.shareLastStored
 import io.github.kr8gz.playerstatistics.database.Database
 import kotlinx.coroutines.launch
 import net.minecraft.command.CommandRegistryAccess
@@ -143,15 +145,14 @@ class StatsCommand(
             )
             .then(literal("page")
                 .then(argument(Arguments.PAGE, IntegerArgumentType.integer(1)).executes { context ->
-                    useDatabase(context) {
-                        // TODO
-                    }
+                    val uuid = context.source.playerOrThrow.uuid
+                    val page = IntegerArgumentType.getInteger(context, Arguments.PAGE)
+                    useDatabase(context) { context.source.runPageAction(uuid, page) }
                 })
             )
             .then(literal("share").executes { context ->
-                useDatabase(context) {
-                    // TODO share last Text output stored in map with player uuid as key
-                }
+                context.source.shareLastStored(context.source.playerOrThrow.uuid)
+                0
             })
         )
     }
