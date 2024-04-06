@@ -11,6 +11,7 @@ import net.minecraft.util.WorldSavePath
 import java.nio.file.Files
 import java.sql.Connection
 import java.sql.DriverManager
+import java.sql.ResultSet
 import java.util.*
 import kotlin.streams.asSequence
 import kotlin.time.Duration.Companion.seconds
@@ -147,7 +148,18 @@ object Database : CoroutineScope {
         }
 
         companion object {
-            private const val pageSize = 9 // 1 row less than default chat height for header
+            private const val pageSize = 8 // default chat size 10 minus rows for header and footer
+
+            private fun ResultSet.generateLeaderboard(pageCount: ResultSet.() -> Int, entryBuilder: ResultSet.() -> Entry): Leaderboard {
+                var pages: Int? = null
+                val entries = generateSequence {
+                    this.takeIf { next() }?.run {
+                        if (pages == null) pages = pageCount()
+                        entryBuilder()
+                    }
+                }.toList()
+                return Leaderboard(entries, pages ?: 0)
+            }
 
             /** @return key = player name */
             suspend fun forStat(stat: String, highlightName: String? = null, page: Int): Leaderboard = coroutineScope {
@@ -161,12 +173,12 @@ object Database : CoroutineScope {
                     ),
                     highlight AS (SELECT pos highlight FROM leaderboard WHERE ${Players.name} = ? LIMIT 1),
                     page_offset AS (SELECT $pageSize - EXISTS(SELECT 1 FROM highlight) page_offset),
-                    page_count AS (
-                        SELECT CEIL(1.0 * ((SELECT MAX(pos) FROM leaderboard) - (highlight IS NOT NULL)) / page_offset) page_count
+                    $pageCount AS (
+                        SELECT CEIL(1.0 * ((SELECT MAX(pos) FROM leaderboard) - (highlight IS NOT NULL)) / page_offset) $pageCount
                         FROM page_offset LEFT JOIN highlight
                     )
-                    SELECT ${RankedStatistics.rank}, ${Players.name}, ${Statistics.value}, page_count
-                    FROM leaderboard LEFT JOIN highlight, page_offset, page_count
+                    SELECT ${RankedStatistics.rank}, ${Players.name}, ${Statistics.value}, $pageCount
+                    FROM leaderboard LEFT JOIN highlight, page_offset, $pageCount
                     WHERE pos >  page_offset * ${page - 1} + COALESCE(highlight < page_offset * ${page - 1}, 0)
                       AND pos <= page_offset * $page       + COALESCE(highlight < page_offset * $page,       0)
                        OR pos = highlight
@@ -177,14 +189,9 @@ object Database : CoroutineScope {
                     setString(2, highlightName)
                     executeQuery()
                 }.use { rs ->
-                    var pages: Int? = null
-                    val entries = generateSequence {
-                        rs.takeIf { it.next() }?.run {
-                            if (pages == null) pages = getInt(pageCount)
-                            Entry(getInt(RankedStatistics.rank), getString(Players.name), getInt(Statistics.value))
-                        }
-                    }.toList()
-                    Leaderboard(entries, pages ?: 0)
+                    rs.generateLeaderboard({ getInt(pageCount) }) {
+                        Entry(getInt(RankedStatistics.rank), getString(Players.name), getInt(Statistics.value))
+                    }
                 }
             }
 
@@ -210,14 +217,9 @@ object Database : CoroutineScope {
                     setString(1, name)
                     executeQuery()
                 }.use { rs ->
-                    var pages: Int? = null
-                    val entries = generateSequence {
-                        rs.takeIf { it.next() }?.run {
-                            if (pages == null) pages = getInt(pageCount)
-                            Entry(getInt(RankedStatistics.rank), getString(Statistics.statistic), getInt(Statistics.value))
-                        }
-                    }.toList()
-                    Leaderboard(entries, pages ?: 0)
+                    rs.generateLeaderboard({ getInt(pageCount) }) {
+                        Entry(getInt(RankedStatistics.rank), getString(Statistics.statistic), getInt(Statistics.value))
+                    }
                 }
             }
         }
