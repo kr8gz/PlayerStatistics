@@ -1,23 +1,29 @@
 package io.github.kr8gz.playerstatistics.command
 
 import net.minecraft.server.command.ServerCommandSource
+import net.minecraft.server.network.ServerPlayerEntity
+import net.minecraft.text.HoverEvent
 import net.minecraft.text.Text
 import java.util.*
 
-typealias PageAction = (suspend ServerCommandSource.(Int) -> Unit)?
+typealias PageAction = (suspend ServerCommandSource.(page: Int) -> Unit)?
 
 object OutputManager {
-    private val storedPlayerOutput = HashMap<UUID, Text>()
+    private data class ShareData(val label: Text, val content: Text)
 
-    fun storeOutput(uuid: UUID, message: Text) {
-        storedPlayerOutput[uuid] = message
+    private val storedPlayerOutput = HashMap<UUID, ShareData>()
+
+    fun storeOutput(uuid: UUID, header: Text, label: Text) {
+        storedPlayerOutput[uuid] = ShareData(header, label)
     }
 
-    fun ServerCommandSource.shareLastStored(uuid: UUID) {
-        storedPlayerOutput.remove(uuid)?.let {
-            server.playerManager.broadcast(it, false)
-        } ?: sendError(Text.translatable("playerstatistics.command.share.unavailable"))
-    }
+    fun ServerCommandSource.shareLastStored(player: ServerPlayerEntity) = storedPlayerOutput.remove(player.uuid)?.let {
+        val label = Text.empty().append(it.label).styled { style ->
+            style.withHoverEvent(HoverEvent(HoverEvent.Action.SHOW_TEXT, it.content))
+        }
+        val message = Text.translatable("playerstatistics.command.share", player.name.string, label)
+        server.playerManager.broadcast(message, false)
+    } ?: sendError(Text.translatable("playerstatistics.command.share.unavailable"))
 
     private val pageActions = HashMap<UUID, PageAction>()
 

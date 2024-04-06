@@ -237,4 +237,12 @@ object Database : CoroutineScope {
                 .use { rs -> rs.next(); rs.getLong(sum) }
         }
     }
+
+    suspend fun fixPlayerName(playerName: String): String? = with(Players) {
+        coroutineScope {
+            connection.prepareStatement("SELECT $name FROM $Players WHERE $name = ?")
+                .run { setString(1, playerName); executeQuery() }
+                .use { rs -> rs.takeIf { it.next() }?.getString(name) }
+        }
+    }
 }

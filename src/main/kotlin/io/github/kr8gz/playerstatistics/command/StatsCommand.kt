@@ -70,8 +70,8 @@ class StatsCommand(
         return 0 // no meaningful immediate return value
     }
 
-    private fun <T : ArgumentBuilder<ServerCommandSource, T>> T.executesWithStatArgument(command: (String, ServerCommandContext) -> Int): T {
-        fun <T : ArgumentBuilder<ServerCommandSource, T>> T.executesWithCheckedStatName(statNameSupplier: (ServerCommandContext) -> String): T {
+    private fun <T : ArgumentBuilder<ServerCommandSource, T>> T.executesWithStatArgument(command: (stat: String, context: ServerCommandContext) -> Int): T {
+        fun <T : ArgumentBuilder<ServerCommandSource, T>> T.executesWithCheckedStatName(statNameSupplier: (context: ServerCommandContext) -> String): T {
             return this.executes { context ->
                 val statName = statNameSupplier(context)
                 if (statName in ALL_STATS) {
@@ -151,7 +151,7 @@ class StatsCommand(
                 })
             )
             .then(literal("share").executes { context ->
-                context.source.shareLastStored(context.source.playerOrThrow.uuid)
+                context.source.shareLastStored(context.source.playerOrThrow)
                 0
             })
         )
