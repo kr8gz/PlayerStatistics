@@ -5,8 +5,12 @@ import io.github.kr8gz.playerstatistics.PlayerStatistics
 import io.github.kr8gz.playerstatistics.access.ServerStatHandlerMixinAccess
 import kotlinx.atomicfu.atomic
 import kotlinx.coroutines.*
+import net.minecraft.registry.Registries
 import net.minecraft.server.MinecraftServer
 import net.minecraft.stat.ServerStatHandler
+import net.minecraft.stat.Stat
+import net.minecraft.stat.StatType
+import net.minecraft.util.Identifier
 import net.minecraft.util.WorldSavePath
 import java.nio.file.Files
 import java.sql.Connection
@@ -120,14 +124,14 @@ object Database : CoroutineScope {
         }
     }
 
-    data class Leaderboard(val pageEntries: List<Entry>, val totalPages: Int) {
-        data class Entry(val rank: Int, val key: String, val value: Int) {
+    data class Leaderboard<T>(val pageEntries: List<Entry<T>>, val totalPages: Int) {
+        data class Entry<T>(val rank: Int, val key: T, val value: Int) {
             companion object {
                 /** @return `null` if the player was not found in the database;
                  *          rank = 0 if the value is 0;
                  *          key = player name
                  */
-                suspend fun of(stat: String, playerName: String): Entry? = coroutineScope {
+                suspend fun of(stat: Stat<*>, playerName: String): Entry<String>? = coroutineScope {
                     val query = """
                         SELECT ${RankedStatistics.rank}, ${Players.name}, COALESCE(${Statistics.value}, 0) ${Statistics.value}
                         FROM $Players
@@ -135,7 +139,7 @@ object Database : CoroutineScope {
                         WHERE ${Players.name} = ?
                     """
                     connection.prepareStatement(query).run {
-                        setString(1, stat)
+                        setString(1, stat.name)
                         setString(2, playerName)
                         executeQuery()
                     }.use { rs ->
@@ -150,7 +154,7 @@ object Database : CoroutineScope {
         companion object {
             private const val pageSize = 8 // default chat size 10 minus rows for header and footer
 
-            private fun ResultSet.generateLeaderboard(pageCount: ResultSet.() -> Int, entryBuilder: ResultSet.() -> Entry): Leaderboard {
+            private fun <T> ResultSet.generateLeaderboard(pageCount: ResultSet.() -> Int, entryBuilder: ResultSet.() -> Entry<T>?): Leaderboard<T> {
                 var pages: Int? = null
                 val entries = generateSequence {
                     this.takeIf { next() }?.run {
@@ -162,7 +166,7 @@ object Database : CoroutineScope {
             }
 
             /** @return key = player name */
-            suspend fun forStat(stat: String, highlightName: String? = null, page: Int): Leaderboard = coroutineScope {
+            suspend fun forStat(stat: Stat<*>, highlightName: String? = null, page: Int): Leaderboard<String> = coroutineScope {
                 val pageCount = "page_count"
                 val query = """
                     WITH leaderboard AS (
@@ -185,7 +189,7 @@ object Database : CoroutineScope {
                     ORDER BY pos
                 """
                 connection.prepareStatement(query).run {
-                    setString(1, stat)
+                    setString(1, stat.name)
                     setString(2, highlightName)
                     executeQuery()
                 }.use { rs ->
@@ -196,7 +200,7 @@ object Database : CoroutineScope {
             }
 
             /** @return key = stat */
-            suspend fun forPlayer(name: String, page: Int): Leaderboard = coroutineScope {
+            suspend fun forPlayer(name: String, page: Int): Leaderboard<Stat<*>> = coroutineScope {
                 val pageCount = "page_count"
                 val query = """
                     WITH leaderboard AS (
@@ -218,18 +222,23 @@ object Database : CoroutineScope {
                     executeQuery()
                 }.use { rs ->
                     rs.generateLeaderboard({ getInt(pageCount) }) {
-                        Entry(getInt(RankedStatistics.rank), getString(Statistics.statistic), getInt(Statistics.value))
+                        getString(Statistics.statistic).split(':').map { Identifier.splitOn(it, '.') }.let { (statTypeId, statId) ->
+                            fun <T> StatType<T>.getStat(id: Identifier) = registry[id]?.let(::getOrCreateStat)
+                            Registries.STAT_TYPE[statTypeId]?.getStat(statId)
+                        }?.let { stat ->
+                            Entry(getInt(RankedStatistics.rank), stat, getInt(Statistics.value))
+                        }
                     }
                 }
             }
         }
     }
 
-    suspend fun serverTotal(stat: String): Long = with(Statistics) {
+    suspend fun serverTotal(stat: Stat<*>): Long = with(Statistics) {
         coroutineScope {
             val sum = "sum"
             connection.prepareStatement("SELECT SUM($value) $sum FROM $Statistics WHERE $statistic = ?")
-                .run { setString(1, stat); executeQuery() }
+                .run { setString(1, stat.name); executeQuery() }
                 .use { rs -> rs.next(); rs.getLong(sum) }
         }
     }

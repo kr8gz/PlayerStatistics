@@ -9,7 +9,7 @@ typealias PageAction = suspend ServerCommandSource.(page: Int) -> Unit
 private val pageActions = HashMap<UUID?, PageAction?>()
 
 fun ServerCommandSource.registerPageAction(max: Int, action: PageAction?) {
-    pageActions[id] = action?.let {
+    pageActions[uuid] = action?.let {
         { page ->
             if (page <= max) action(page)
             else sendError(Text.translatable("playerstatistics.command.page.no_data"))
@@ -18,5 +18,5 @@ fun ServerCommandSource.registerPageAction(max: Int, action: PageAction?) {
 }
 
 suspend fun ServerCommandSource.runPageAction(page: Int) {
-    pageActions[id]?.let { it(page) } ?: sendError(Text.translatable("playerstatistics.command.page.unavailable"))
+    pageActions[uuid]?.let { it(page) } ?: sendError(Text.translatable("playerstatistics.command.page.unavailable"))
 }

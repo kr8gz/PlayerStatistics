@@ -8,6 +8,7 @@
   "playerstatistics.command.page.previous": "Vorige Seite",
   "playerstatistics.command.page.unavailable": "Keine Seiten für das letzte Ergebnis verfügbar",
   "playerstatistics.command.player": "%2$s von %1$s",
+  "playerstatistics.command.player.rank": "Rang #%s",
   "playerstatistics.command.share": "Teilen",
   "playerstatistics.command.share.hint": "Teile diese Ergebnisse im Chat!",
   "playerstatistics.command.share.hover": "Hover",

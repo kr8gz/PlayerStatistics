@@ -6,8 +6,8 @@ import net.minecraft.block.Block
 import net.minecraft.entity.EntityType
 import net.minecraft.item.Item
 import net.minecraft.item.Items
-import net.minecraft.registry.Registries
 import net.minecraft.server.command.ServerCommandSource
+import net.minecraft.stat.Stat
 import net.minecraft.text.*
 import net.minecraft.util.Identifier
 import java.text.DecimalFormat
@@ -20,25 +20,22 @@ private object Colors {
     const val DARK_GRAY = 0x555555
 }
 
-private fun formatStatName(stat: String) = stat.split(':').map { Identifier.splitOn(it, '.') }.let { (statTypeId, statId) ->
-    Registries.STAT_TYPE[statTypeId]?.let { statType ->
-        statType.registry[statId]?.let { obj ->
-            fun formatWithStatType(statText: Text) =
-                Text.translatable("playerstatistics.stat_type.${statTypeId.toTranslationKey()}", statText)
+private fun formatStatName(stat: Stat<*>): MutableText {
+    fun formatWithStatType(statText: Text): MutableText {
+        return Text.translatable("playerstatistics.stat_type.${stat.type.identifier.toTranslationKey()}", statText)
+    }
 
-            fun formatItemText(item: Item) = formatWithStatType(Text.empty().append(item.name).styled {
-                it.withHoverEvent(HoverEvent(HoverEvent.Action.SHOW_ITEM, HoverEvent.ItemStackContent(item.defaultStack)))
-            })
+    fun formatItemText(item: Item) = formatWithStatType(Text.empty().append(item.name).styled {
+        it.withHoverEvent(HoverEvent(HoverEvent.Action.SHOW_ITEM, HoverEvent.ItemStackContent(item.defaultStack)))
+    })
 
-            when (obj) {
-                is Block -> obj.asItem().takeIf { it != Items.AIR }?.let(::formatItemText) ?: formatWithStatType(obj.name)
-                is Item -> formatItemText(obj)
-                is EntityType<*> -> formatWithStatType(obj.name)
-                is Identifier -> Text.translatable("stat.${statId.toTranslationKey()}")
-                else -> null
-            }
-        }
-    } ?: Text.literal(stat)
+    return when (val obj = stat.value) {
+        is Block -> obj.asItem().takeIf { it != Items.AIR }?.let(::formatItemText) ?: formatWithStatType(obj.name)
+        is Item -> formatItemText(obj)
+        is EntityType<*> -> formatWithStatType(obj.name)
+        is Identifier -> Text.translatable("stat.${obj.toTranslationKey()}")
+        else -> Text.literal(stat.name)
+    }
 }
 
 private fun MutableText.addPageFooter(page: Int, max: Int) = if (max <= 1) this else apply {
@@ -79,7 +76,7 @@ private fun MutableText.addShareButton() = apply {
     })
 }
 
-suspend fun ServerCommandSource.sendLeaderboard(stat: String, page: Int = 1) {
+suspend fun ServerCommandSource.sendLeaderboard(stat: Stat<*>, page: Int = 1) {
     val leaderboard = Leaderboard.forStat(stat, player?.name?.string, page)
 
     val label = Text.translatable("playerstatistics.command.leaderboard", formatStatName(stat))
@@ -94,7 +91,7 @@ suspend fun ServerCommandSource.sendLeaderboard(stat: String, page: Int = 1) {
     registerPageAction(max = leaderboard.totalPages) { sendLeaderboard(stat, it) }
 }
 
-suspend fun ServerCommandSource.sendServerTotal(stat: String) {
+suspend fun ServerCommandSource.sendServerTotal(stat: Stat<*>) {
     val label = Text.translatable("playerstatistics.command.total", formatStatName(stat))
     val content = label.copy().apply {
         val total = Database.serverTotal(stat)
@@ -113,13 +110,19 @@ suspend fun ServerCommandSource.sendServerTotal(stat: String) {
     storeShareData(label, content)
 }
 
-suspend fun ServerCommandSource.sendPlayerStat(stat: String, playerName: String) {
+suspend fun ServerCommandSource.sendPlayerStat(stat: Stat<*>, playerName: String) {
     Leaderboard.Entry.of(stat, playerName)?.let { (rank, player, value) ->
         val statText = formatStatName(stat)
         val label = Text.translatable("playerstatistics.command.player", player, statText)
         val content = Text.literal("$player: $value ").apply {
             append(statText)
-            if (rank > 0) append(" (#$rank)")
+            if (rank > 0) {
+                append(" (")
+                append(Text.translatable("playerstatistics.command.player.rank", rank).styled {
+                    it.withClickEvent(ClickEvent(ClickEvent.Action.SUGGEST_COMMAND, "/stats leaderboard ${stat.asCommandArguments()}"))
+                })
+                append(")")
+            }
         }
         sendFeedback(content.copy().addShareButton())
         storeShareData(label, content)
@@ -132,8 +135,11 @@ suspend fun ServerCommandSource.sendPlayerTopStats(playerName: String, page: Int
         val content = label.copy().apply {
             leaderboard.pageEntries.forEach { (rank, stat, value) ->
                 append(Text.literal("\n» ").withColor(Colors.DARK_GRAY))
-                append("#$rank ")
-                append(formatStatName(stat))
+                append(Text.translatable("playerstatistics.command.player.rank", rank))
+                append(" ")
+                append(formatStatName(stat).styled {
+                    it.withClickEvent(ClickEvent(ClickEvent.Action.SUGGEST_COMMAND, "/stats leaderboard ${stat.asCommandArguments()}"))
+                })
                 append(" - $value")
             }
         }

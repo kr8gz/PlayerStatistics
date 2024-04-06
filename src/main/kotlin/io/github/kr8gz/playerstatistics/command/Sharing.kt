@@ -11,11 +11,11 @@ private data class ShareData(val label: Text, val content: Text)
 private val storedShareData = HashMap<UUID?, ShareData>()
 
 fun ServerCommandSource.storeShareData(header: Text, label: Text) {
-    storedShareData[id] = ShareData(header, label)
+    storedShareData[uuid] = ShareData(header, label)
 }
 
 fun ServerCommandSource.shareStoredData() {
-    storedShareData.remove(id)?.let { (label, content) ->
+    storedShareData.remove(uuid)?.let { (label, content) ->
         val hoverText = Texts.bracketed(Text.translatable("playerstatistics.command.share.hover")).styled {
             it.withHoverEvent(HoverEvent(HoverEvent.Action.SHOW_TEXT, content))
         }

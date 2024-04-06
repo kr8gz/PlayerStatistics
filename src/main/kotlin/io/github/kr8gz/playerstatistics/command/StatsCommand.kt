@@ -5,24 +5,22 @@ import com.mojang.brigadier.arguments.IntegerArgumentType
 import com.mojang.brigadier.arguments.StringArgumentType
 import com.mojang.brigadier.builder.ArgumentBuilder
 import com.mojang.brigadier.context.CommandContext
-import com.mojang.brigadier.exceptions.DynamicCommandExceptionType
 import com.mojang.brigadier.exceptions.SimpleCommandExceptionType
 import io.github.kr8gz.playerstatistics.database.Database
 import kotlinx.coroutines.launch
 import net.minecraft.command.CommandRegistryAccess
 import net.minecraft.command.CommandSource
-import net.minecraft.command.argument.IdentifierArgumentType
 import net.minecraft.command.argument.RegistryEntryArgumentType
 import net.minecraft.registry.Registries
+import net.minecraft.registry.Registry
 import net.minecraft.registry.RegistryKey
-import net.minecraft.registry.RegistryKeys
 import net.minecraft.server.command.CommandManager.argument
 import net.minecraft.server.command.CommandManager.literal
 import net.minecraft.server.command.ServerCommandSource
+import net.minecraft.stat.Stat
 import net.minecraft.stat.StatType
 import net.minecraft.stat.Stats
 import net.minecraft.text.Text
-import net.minecraft.util.Identifier
 import java.util.*
 
 typealias ServerCommandContext = CommandContext<ServerCommandSource>
@@ -32,7 +30,6 @@ class StatsCommand(
     private val registryAccess: CommandRegistryAccess,
 ) {
     private object Arguments {
-        const val STAT_TYPE = "type"
         const val STAT = "stat"
         const val PLAYER = "player"
         const val PAGE = "page"
@@ -45,92 +42,61 @@ class StatsCommand(
         val ALREADY_RUNNING = SimpleCommandExceptionType(
             Text.translatable("playerstatistics.database.running")
         )
-        val UNKNOWN_STATISTIC = DynamicCommandExceptionType { name ->
-            Text.stringifiedTranslatable("playerstatistics.argument.statistic.unknown", name)
-        }
-    }
-
-    private companion object {
-        fun getStatName(statType: RegistryKey<StatType<*>>, identifier: Identifier): String {
-            fun Identifier.adjustFormat() = this.toString().replace(':', '.')
-            return statType.value.adjustFormat() + ":" + identifier.adjustFormat()
-        }
-
-        val ALL_STATS = Registries.STAT_TYPE.entrySet.flatMap { (key, type) ->
-            type.registry.ids.mapNotNull { value -> getStatName(key, value) }
-        }
     }
 
     private val databaseUsers = HashSet<UUID?>()
 
     private inline fun useDatabase(context: ServerCommandContext, crossinline command: suspend Database.() -> Unit): Int {
         if (Database.Initializer.inProgress) throw Exceptions.DATABASE_INITIALIZING.create()
-        if (!databaseUsers.add(context.source.id)) throw Exceptions.ALREADY_RUNNING.create()
+        if (!databaseUsers.add(context.source.uuid)) throw Exceptions.ALREADY_RUNNING.create()
         Database.launch {
             context.source.server.playerManager.playerList.forEach {
                 Database.Updater.updateStats(it.statHandler)
             }
             Database.command()
-            databaseUsers.remove(context.source.id)
+            databaseUsers.remove(context.source.uuid)
         }
         return 0 // no meaningful immediate return value
     }
 
-    private fun <T : ArgumentBuilder<ServerCommandSource, T>> T.executesWithStatArgument(command: (stat: String, context: ServerCommandContext) -> Int): T {
-        fun <T : ArgumentBuilder<ServerCommandSource, T>> T.executesWithCheckedStatName(statNameSupplier: (context: ServerCommandContext) -> String): T {
-            return this.executes { context ->
-                val statName = statNameSupplier(context)
-                if (statName in ALL_STATS) {
-                    command(statName, context)
-                } else {
-                    throw Exceptions.UNKNOWN_STATISTIC.create(statName)
-                }
-            }
+    private companion object {
+        private fun <T> StatType<T>.getAll() = registry.map(::getOrCreateStat)
+        val ALL_STATS = Registries.STAT_TYPE.flatMap { it.getAll() }
+    }
+
+    private fun <T : ArgumentBuilder<ServerCommandSource, T>> T.executesWithStatArgument(command: (context: ServerCommandContext, stat: Stat<*>) -> Int): T {
+        fun <T : ArgumentBuilder<ServerCommandSource, T>, S> T.addArgumentsForStatType(statType: StatType<S>): T {
+            @Suppress("UNCHECKED_CAST")
+            val registryKey = statType.registry.key as RegistryKey<Registry<S>>
+            return this.then(argument(Arguments.STAT, RegistryEntryArgumentType.registryEntry(registryAccess, registryKey)).executes { context ->
+                val entry = RegistryEntryArgumentType.getRegistryEntry(context, Arguments.STAT, registryKey)
+                command(context, statType.getOrCreateStat(entry.value()))
+            })
         }
 
-        return this
-            .then(literal("random").executes { context -> command(ALL_STATS.random(), context) })
-            .then(argument(Arguments.STAT_TYPE, RegistryEntryArgumentType.registryEntry(registryAccess, RegistryKeys.STAT_TYPE))
-                // hide the minecraft:custom stat category so that custom stats are easier to find (see last branch)
-                .suggests { _, builder ->
-                    val types = Registries.STAT_TYPE.streamEntries()
-                        .filter { entry -> entry.value() != Stats.CUSTOM }
-                        .map { entry -> entry.registryKey().value }
-                    CommandSource.suggestIdentifiers(types, builder)
-                }
-                .then(argument(Arguments.STAT, IdentifierArgumentType.identifier())
-                    .suggests { context, builder ->
-                        val statType = RegistryEntryArgumentType.getRegistryEntry(context, Arguments.STAT_TYPE, RegistryKeys.STAT_TYPE).value()
-                        CommandSource.suggestIdentifiers(statType.registry.ids, builder)
-                    }
-                    .executesWithCheckedStatName { context ->
-                        val type = RegistryEntryArgumentType.getRegistryEntry(context, Arguments.STAT_TYPE, RegistryKeys.STAT_TYPE)
-                        val id = IdentifierArgumentType.getIdentifier(context, Arguments.STAT)
-                        getStatName(type.registryKey(), id)
-                    }
-                )
-            )
-            // merge custom stats with stat type argument
-            .then(argument(Arguments.STAT, RegistryEntryArgumentType.registryEntry(registryAccess, RegistryKeys.CUSTOM_STAT))
-                .executesWithCheckedStatName { context ->
-                    val id = RegistryEntryArgumentType.getRegistryEntry(context, Arguments.STAT, RegistryKeys.CUSTOM_STAT)
-                    getStatName(Registries.STAT_TYPE.getKey(Stats.CUSTOM).get(), id.value())
-                }
-            )
+        Registries.STAT_TYPE.entrySet.forEach { (key, statType) ->
+            // add custom ones directly to the outer level to make them easier to find
+            if (statType == Stats.CUSTOM)
+                this.addArgumentsForStatType(statType)
+            else
+                this.then(literal(key.value.path).addArgumentsForStatType(statType))
+        }
+
+        return this.then(literal("random").executes { context -> command(context, ALL_STATS.random()) })
     }
 
     init {
         dispatcher.register(literal("stats")
-            .then(literal("leaderboard").executesWithStatArgument { stat, context ->
+            .then(literal("leaderboard").executesWithStatArgument { context, stat ->
                 useDatabase(context) { context.source.sendLeaderboard(stat) }
             })
-            .then(literal("total").executesWithStatArgument { stat, context ->
+            .then(literal("total").executesWithStatArgument { context, stat ->
                 useDatabase(context) { context.source.sendServerTotal(stat) }
             })
             .then(literal("player")
                 .then(argument(Arguments.PLAYER, StringArgumentType.word())
                     .suggests { _, builder -> CommandSource.suggestMatching(Database.playerNames, builder) }
-                    .executesWithStatArgument { stat, context ->
+                    .executesWithStatArgument { context, stat ->
                         val player = StringArgumentType.getString(context, Arguments.PLAYER)
                         useDatabase(context) { context.source.sendPlayerStat(stat, player) }
                     }
