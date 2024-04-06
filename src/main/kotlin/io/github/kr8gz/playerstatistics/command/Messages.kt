@@ -1,20 +1,17 @@
 package io.github.kr8gz.playerstatistics.command
 
 import io.github.kr8gz.playerstatistics.database.Database
+import io.github.kr8gz.playerstatistics.database.Database.Leaderboard
 import net.minecraft.block.Block
 import net.minecraft.entity.EntityType
 import net.minecraft.item.Item
 import net.minecraft.registry.Registries
 import net.minecraft.server.command.ServerCommandSource
 import net.minecraft.text.Text
-import net.minecraft.util.Formatting
 import net.minecraft.util.Identifier
 import java.text.DecimalFormat
 import java.text.DecimalFormatSymbols
 import java.util.*
-
-private fun formatUnknownPlayerError(name: String): Text =
-    Text.translatable("playerstatistics.argument.player.unknown", name).formatted(Formatting.RED)
 
 private fun formatStatName(stat: String): Text {
     val (statTypeId, statId) = stat.split(':').map { Identifier.splitOn(it, '.') }
@@ -35,33 +32,32 @@ private fun formatStatName(stat: String): Text {
     } ?: Text.of(stat)
 }
 
-private fun ServerCommandSource.sendMessageAndStore(label: Text, content: Text, pageAction: PageAction = null) {
+private fun ServerCommandSource.sendMessageAndStore(label: Text, content: Text) {
     sendFeedback({ content }, false)
-    player?.let {
-        OutputManager.storeOutput(it.uuid, label, content)
-        OutputManager.registerPageAction(it.uuid, pageAction)
-    }
+    storeShareData(label, content)
 }
 
-suspend fun ServerCommandSource.sendLeaderboard(stat: String, highlightName: String?, page: Int = 1) {
+suspend fun ServerCommandSource.sendLeaderboard(stat: String, page: Int = 1) {
     val label = Text.translatable("playerstatistics.command.leaderboard", formatStatName(stat))
     val content = label.copy().apply {
-        Database.Leaderboard.forStat(stat, highlightName, page).pageEntries.forEach { (rank, player, value) ->
+        val leaderboard = Leaderboard.forStat(stat, player?.name?.string, page)
+        leaderboard.pageEntries.forEach { (rank, player, value) ->
             append("\n$rank. $player - $value")
         }
     }
-    sendMessageAndStore(label, content) { sendLeaderboard(stat, highlightName, it) }
+    sendMessageAndStore(label, content)
+    registerPageAction { sendLeaderboard(stat, it) }
 }
 
-suspend fun ServerCommandSource.sendServerTotal(stat: String, highlightName: String?) {
+suspend fun ServerCommandSource.sendServerTotal(stat: String) {
     val label = Text.translatable("playerstatistics.command.total", formatStatName(stat))
     val content = label.copy().apply {
         val total = Database.serverTotal(stat)
         append(": $total")
-        highlightName?.let { name ->
-            Database.Leaderboard.Entry.of(stat, name)?.takeIf { it.value > 0 }?.let { (_, player, value) ->
+        player?.name?.string?.let { playerName ->
+            Leaderboard.Entry.of(stat, playerName)?.takeIf { it.value > 0 }?.let { (_, _, value) ->
                 append("\n")
-                append(Text.translatable("playerstatistics.command.total.contributed", player, value, run {
+                append(Text.translatable("playerstatistics.command.total.contributed", playerName, value, run {
                     val percentageFormat = DecimalFormat("#.##", DecimalFormatSymbols(Locale.US))
                     percentageFormat.format(value.toFloat() / total * 100)
                 }))
@@ -72,7 +68,7 @@ suspend fun ServerCommandSource.sendServerTotal(stat: String, highlightName: Str
 }
 
 suspend fun ServerCommandSource.sendPlayerStat(stat: String, playerName: String) {
-    Database.Leaderboard.Entry.of(stat, playerName)?.let { (rank, player, value) ->
+    Leaderboard.Entry.of(stat, playerName)?.let { (rank, player, value) ->
         val statName = formatStatName(stat)
         val label = Text.translatable("playerstatistics.command.player", player, statName)
         val content = Text.literal("$player: $value ").apply {
@@ -80,11 +76,11 @@ suspend fun ServerCommandSource.sendPlayerStat(stat: String, playerName: String)
             if (rank > 0) append(" (#$rank)")
         }
         sendMessageAndStore(label, content)
-    } ?: sendError(formatUnknownPlayerError(playerName))
+    } ?: sendError(Text.translatable("playerstatistics.argument.player.unknown", playerName))
 }
 
 suspend fun ServerCommandSource.sendPlayerTopStats(playerName: String, page: Int = 1) {
-    Database.Leaderboard.forPlayer(playerName, page).takeIf { it.totalPages > 0 }?.let { leaderboard ->
+    Leaderboard.forPlayer(playerName, page).takeIf { it.totalPages > 0 }?.let { leaderboard ->
         val label = Text.translatable("playerstatistics.command.top", Database.fixPlayerName(playerName))
         val content = label.copy().apply {
             leaderboard.pageEntries.forEach { (rank, stat, value) ->
@@ -93,6 +89,7 @@ suspend fun ServerCommandSource.sendPlayerTopStats(playerName: String, page: Int
                 append(" - $value")
             }
         }
-        sendMessageAndStore(label, content) { page -> sendPlayerTopStats(playerName, page) }
-    } ?: sendError(formatUnknownPlayerError(playerName))
+        sendMessageAndStore(label, content)
+        registerPageAction { sendPlayerTopStats(playerName, it) }
+    } ?: sendError(Text.translatable("playerstatistics.argument.player.unknown", playerName))
 }

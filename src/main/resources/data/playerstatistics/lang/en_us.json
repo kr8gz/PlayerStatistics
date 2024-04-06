@@ -10,6 +10,7 @@
   "playerstatistics.command.total": "Server-wide total %s",
   "playerstatistics.command.total.contributed": "%s contributed %s (%s%%)",
   "playerstatistics.database.initializing": "Database is currently initializing, please wait",
+  "playerstatistics.database.running": "You are already running a query, please wait",
   "playerstatistics.stat_type.minecraft.broken": "Broken %s",
   "playerstatistics.stat_type.minecraft.crafted": "Crafted %s",
   "playerstatistics.stat_type.minecraft.dropped": "Dropped %s",

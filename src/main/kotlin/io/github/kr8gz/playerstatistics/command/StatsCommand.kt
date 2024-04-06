@@ -7,8 +7,6 @@ import com.mojang.brigadier.builder.ArgumentBuilder
 import com.mojang.brigadier.context.CommandContext
 import com.mojang.brigadier.exceptions.DynamicCommandExceptionType
 import com.mojang.brigadier.exceptions.SimpleCommandExceptionType
-import io.github.kr8gz.playerstatistics.command.OutputManager.runPageAction
-import io.github.kr8gz.playerstatistics.command.OutputManager.shareLastStored
 import io.github.kr8gz.playerstatistics.database.Database
 import kotlinx.coroutines.launch
 import net.minecraft.command.CommandRegistryAccess
@@ -25,6 +23,7 @@ import net.minecraft.stat.StatType
 import net.minecraft.stat.Stats
 import net.minecraft.text.Text
 import net.minecraft.util.Identifier
+import java.util.*
 
 typealias ServerCommandContext = CommandContext<ServerCommandSource>
 
@@ -43,6 +42,9 @@ class StatsCommand(
         val DATABASE_INITIALIZING = SimpleCommandExceptionType(
             Text.translatable("playerstatistics.database.initializing")
         )
+        val ALREADY_RUNNING = SimpleCommandExceptionType(
+            Text.translatable("playerstatistics.database.running")
+        )
         val UNKNOWN_STATISTIC = DynamicCommandExceptionType { name ->
             Text.stringifiedTranslatable("playerstatistics.argument.statistic.unknown", name)
         }
@@ -59,13 +61,17 @@ class StatsCommand(
         }
     }
 
+    private val databaseUsers = HashSet<UUID?>()
+
     private inline fun useDatabase(context: ServerCommandContext, crossinline command: suspend Database.() -> Unit): Int {
         if (Database.Initializer.inProgress) throw Exceptions.DATABASE_INITIALIZING.create()
+        if (!databaseUsers.add(context.source.id)) throw Exceptions.ALREADY_RUNNING.create()
         Database.launch {
             context.source.server.playerManager.playerList.forEach {
                 Database.Updater.updateStats(it.statHandler)
             }
             Database.command()
+            databaseUsers.remove(context.source.id)
         }
         return 0 // no meaningful immediate return value
     }
@@ -116,10 +122,10 @@ class StatsCommand(
     init {
         dispatcher.register(literal("stats")
             .then(literal("leaderboard").executesWithStatArgument { stat, context ->
-                useDatabase(context) { context.source.sendLeaderboard(stat, context.source.player?.name?.string) }
+                useDatabase(context) { context.source.sendLeaderboard(stat) }
             })
             .then(literal("total").executesWithStatArgument { stat, context ->
-                useDatabase(context) { context.source.sendServerTotal(stat, context.source.player?.name?.string) }
+                useDatabase(context) { context.source.sendServerTotal(stat) }
             })
             .then(literal("player")
                 .then(argument(Arguments.PLAYER, StringArgumentType.word())
@@ -145,15 +151,11 @@ class StatsCommand(
             )
             .then(literal("page")
                 .then(argument(Arguments.PAGE, IntegerArgumentType.integer(1)).executes { context ->
-                    val uuid = context.source.playerOrThrow.uuid
                     val page = IntegerArgumentType.getInteger(context, Arguments.PAGE)
-                    useDatabase(context) { context.source.runPageAction(uuid, page) }
+                    useDatabase(context) { context.source.runPageAction(page) }
                 })
             )
-            .then(literal("share").executes { context ->
-                context.source.shareLastStored(context.source.playerOrThrow)
-                0
-            })
+            .then(literal("share").executes { context -> context.source.shareStoredData(); 0 })
         )
     }
 }

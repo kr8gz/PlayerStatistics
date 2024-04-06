@@ -8,18 +8,12 @@ import kotlinx.coroutines.*
 import net.minecraft.server.MinecraftServer
 import net.minecraft.stat.ServerStatHandler
 import net.minecraft.util.WorldSavePath
-import org.apache.commons.io.FilenameUtils
 import java.nio.file.Files
 import java.sql.Connection
 import java.sql.DriverManager
 import java.util.*
 import kotlin.streams.asSequence
 import kotlin.time.Duration.Companion.seconds
-
-private val ServerStatHandler.uuid
-    get() = file.toString()
-            .let(FilenameUtils::getBaseName)
-            .let(UUID::fromString)
 
 object Database : CoroutineScope {
     override val coroutineContext = Dispatchers.IO
@@ -132,7 +126,7 @@ object Database : CoroutineScope {
                  *          rank = 0 if the value is 0;
                  *          key = player name
                  */
-                suspend fun of(stat: String, name: String): Entry? = coroutineScope {
+                suspend fun of(stat: String, playerName: String): Entry? = coroutineScope {
                     val query = """
                         SELECT ${RankedStatistics.rank}, ${Players.name}, COALESCE(${Statistics.value}, 0) ${Statistics.value}
                         FROM $Players
@@ -141,7 +135,7 @@ object Database : CoroutineScope {
                     """
                     connection.prepareStatement(query).run {
                         setString(1, stat)
-                        setString(2, name)
+                        setString(2, playerName)
                         executeQuery()
                     }.use { rs ->
                         rs.takeIf { it.next() }?.run {
