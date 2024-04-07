@@ -5,12 +5,16 @@ import com.mojang.brigadier.arguments.IntegerArgumentType
 import com.mojang.brigadier.arguments.StringArgumentType
 import com.mojang.brigadier.builder.ArgumentBuilder
 import com.mojang.brigadier.context.CommandContext
+import com.mojang.brigadier.exceptions.CommandSyntaxException
 import com.mojang.brigadier.exceptions.SimpleCommandExceptionType
+import io.github.kr8gz.playerstatistics.PlayerStatistics
 import io.github.kr8gz.playerstatistics.database.Database
 import kotlinx.coroutines.launch
+import me.lucko.fabric.api.permissions.v0.Permissions
 import net.minecraft.command.CommandRegistryAccess
 import net.minecraft.command.CommandSource
 import net.minecraft.command.argument.RegistryEntryArgumentType
+import net.minecraft.command.argument.UuidArgumentType
 import net.minecraft.registry.Registries
 import net.minecraft.registry.Registry
 import net.minecraft.registry.RegistryKey
@@ -34,18 +38,23 @@ class StatsCommand(
         const val STAT = "stat"
         const val PLAYER = "player"
         const val PAGE = "page"
+        const val CODE = "code"
     }
 
-    private object Exceptions {
-        val DATABASE_INITIALIZING = SimpleCommandExceptionType(
-            Text.translatable("playerstatistics.database.initializing")
-        )
-        val ALREADY_RUNNING = SimpleCommandExceptionType(
-            Text.translatable("playerstatistics.database.running")
-        )
+    enum class Exceptions(translationKey: String) {
+        // Database
+        DATABASE_INITIALIZING("playerstatistics.database.initializing"),
+        ALREADY_RUNNING("playerstatistics.database.running"),
+        // Sharing
+        NO_SHARE_RESULTS("playerstatistics.command.share.nothing"),
+        SHARE_UNAVAILABLE("playerstatistics.command.share.unavailable"),
+        ALREADY_SHARED("playerstatistics.command.share.already_shared");
+
+        private val exception = SimpleCommandExceptionType(Text.translatable(translationKey))
+        fun create(): CommandSyntaxException = exception.create()
     }
 
-    private val databaseUsers = ConcurrentHashMap.newKeySet<UUID?>()
+    private val databaseUsers = ConcurrentHashMap.newKeySet<UUID>()
 
     private inline fun ServerCommandSource.useDatabase(crossinline command: suspend ServerCommandSource.() -> Unit): Int {
         if (Database.Initializer.inProgress) throw Exceptions.DATABASE_INITIALIZING.create()
@@ -127,7 +136,14 @@ class StatsCommand(
                     context.source.useDatabase { runPageAction(page) }
                 })
             )
-            .then(literal("share").executes { context -> context.source.shareStoredData(); 0 })
+            .then(literal("share")
+                .requires(Permissions.require(PlayerStatistics.Permissions.SHARE, true))
+                .executes { context -> context.source.shareStoredData(); 0 }
+                .then(argument(Arguments.CODE, UuidArgumentType.uuid()).executes { context ->
+                    val code = UuidArgumentType.getUuid(context, Arguments.CODE)
+                    context.source.shareStoredData(code); 0
+                })
+            )
         )
     }
 }

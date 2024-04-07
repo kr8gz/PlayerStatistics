@@ -3,10 +3,11 @@ package io.github.kr8gz.playerstatistics.command
 import net.minecraft.server.command.ServerCommandSource
 import net.minecraft.text.Text
 import java.util.*
+import java.util.concurrent.ConcurrentHashMap
 
 typealias PageAction = suspend ServerCommandSource.(page: Int) -> Unit
 
-private val pageActions = HashMap<UUID?, PageAction?>()
+private val pageActions = ConcurrentHashMap<UUID, PageAction?>()
 
 fun ServerCommandSource.registerPageAction(max: Int, action: PageAction?) {
     pageActions[uuid] = action?.let {

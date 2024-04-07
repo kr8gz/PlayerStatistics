@@ -5,21 +5,37 @@ import net.minecraft.text.HoverEvent
 import net.minecraft.text.Text
 import net.minecraft.text.Texts
 import java.util.*
+import java.util.concurrent.ConcurrentHashMap
 
-private data class ShareData(val label: Text, val content: Text)
+private data class ShareData(val label: Text, val content: Text, var shared: Boolean)
 
-private val storedShareData = HashMap<UUID?, ShareData>()
+private val storedShareData = ConcurrentHashMap<UUID, LinkedHashMap<UUID, ShareData>>()
 
-fun ServerCommandSource.storeShareData(label: Text, content: Text) {
-    storedShareData[uuid] = ShareData(label, content)
+private fun getShareDataFor(uuid: UUID) = storedShareData.getOrPut(uuid) {
+    object : LinkedHashMap<UUID, ShareData>() {
+        override fun removeEldestEntry(eldest: Map.Entry<UUID, ShareData>?) = size > 20
+    }
 }
 
-fun ServerCommandSource.shareStoredData() {
-    storedShareData.remove(uuid)?.let { (label, content) ->
-        val hoverText = Texts.bracketed(Text.translatable("playerstatistics.command.share.hover")).styled {
-            it.withHoverEvent(HoverEvent(HoverEvent.Action.SHOW_TEXT, content))
-        }
-        val message = Text.translatable("playerstatistics.command.share.message", entity?.displayName ?: name, label)
-        server.playerManager.broadcast(message.append(" ").append(hoverText), false)
-    } ?: sendError(Text.translatable("playerstatistics.command.share.unavailable"))
+fun ServerCommandSource.storeShareData(label: Text, content: Text): UUID = UUID.randomUUID().also { code ->
+    getShareDataFor(uuid)[code] = ShareData(label, content, false)
+}
+
+fun ServerCommandSource.shareStoredData(code: UUID? = null) {
+    val shareData = getShareDataFor(uuid)
+
+    val actualCode = code
+        ?: shareData.keys.lastOrNull()
+        ?: throw StatsCommand.Exceptions.NO_SHARE_RESULTS.create()
+
+    val data = shareData[actualCode]
+        ?: throw StatsCommand.Exceptions.SHARE_UNAVAILABLE.create()
+
+    if (data.shared) throw StatsCommand.Exceptions.ALREADY_SHARED.create() else data.shared = true
+
+    val hoverText = Texts.bracketed(Text.translatable("playerstatistics.command.share.hover")).styled {
+        it.withHoverEvent(HoverEvent(HoverEvent.Action.SHOW_TEXT, data.content))
+    }
+    val message = Text.translatable("playerstatistics.command.share.message", entity?.displayName ?: name, data.label)
+    server.playerManager.broadcast(message.append(" ").append(hoverText), false)
 }

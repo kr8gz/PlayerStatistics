@@ -5,8 +5,9 @@ import net.minecraft.server.command.ServerCommandSource
 import net.minecraft.stat.StatType
 import net.minecraft.text.Text
 import net.minecraft.util.Identifier
+import java.util.*
 
-val ServerCommandSource.uuid get() = player?.uuid
+val ServerCommandSource.uuid get() = player?.uuid ?: UUID(0, 0)
 
 fun ServerCommandSource.sendFeedback(message: Text) = sendFeedback({ message }, false)
 

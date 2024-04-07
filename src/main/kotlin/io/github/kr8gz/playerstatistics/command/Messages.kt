@@ -44,7 +44,7 @@ private fun <T> Stat<T>.asCommandArguments(): String {
     return if (type == Stats.CUSTOM) statId.toShortString() else "${type.identifier.path} $statId"
 }
 
-private fun MutableText.addPageFooter(page: Int, max: Int) = apply {
+private fun MutableText.addPageFooter(page: Int, max: Int, shareCode: UUID) = apply {
     fun MutableText.styleButton(newPage: Int, translationKey: String, active: Boolean): MutableText {
         return if (active) withColor(Colors.WHITE).styled {
             it.withHoverEvent(HoverEvent(HoverEvent.Action.SHOW_TEXT, Text.translatable(translationKey)))
@@ -69,16 +69,16 @@ private fun MutableText.addPageFooter(page: Int, max: Int) = apply {
         active = page < max,
     ))
     append(Text.literal("--").withColor(Colors.GRAY))
-    addShareButton()
+    addShareButton(shareCode)
     append(" ")
     append(Text.literal("-----").withColor(Colors.GRAY))
 }
 
-private fun MutableText.addShareButton() = apply {
+private fun MutableText.addShareButton(code: UUID) = apply {
     append(" ")
     append(Texts.bracketed(Text.translatable("playerstatistics.command.share")).styled {
         it.withHoverEvent(HoverEvent(HoverEvent.Action.SHOW_TEXT, Text.translatable("playerstatistics.command.share.hint")))
-            .withClickEvent(ClickEvent(ClickEvent.Action.RUN_COMMAND, "/stats share"))
+            .withClickEvent(ClickEvent(ClickEvent.Action.RUN_COMMAND, "/stats share $code"))
     })
 }
 
@@ -92,8 +92,8 @@ suspend fun ServerCommandSource.sendLeaderboard(stat: Stat<*>, page: Int = 1) {
             append("$rank. $player - ${stat.format(value)}")
         }
     }
-    sendFeedback(content.copy().addPageFooter(page, leaderboard.pageCount))
-    storeShareData(label, content)
+    val shareCode = storeShareData(label, content)
+    sendFeedback(content.copy().addPageFooter(page, leaderboard.pageCount, shareCode))
     registerPageAction(max = leaderboard.pageCount) { sendLeaderboard(stat, it) }
 }
 
@@ -112,8 +112,8 @@ suspend fun ServerCommandSource.sendServerTotal(stat: Stat<*>) {
             }
         }
     }
-    sendFeedback(content.copy().addShareButton())
-    storeShareData(label, content)
+    val shareCode = storeShareData(label, content)
+    sendFeedback(content.copy().addShareButton(shareCode))
 }
 
 suspend fun ServerCommandSource.sendPlayerStat(stat: Stat<*>, playerName: String) {
@@ -130,8 +130,8 @@ suspend fun ServerCommandSource.sendPlayerStat(stat: Stat<*>, playerName: String
                 append(")")
             }
         }
-        sendFeedback(content.copy().addShareButton())
-        storeShareData(label, content)
+        val shareCode = storeShareData(label, content)
+        sendFeedback(content.copy().addShareButton(shareCode))
     } ?: sendError(Text.translatable("playerstatistics.argument.player.unknown", playerName))
 }
 
@@ -149,8 +149,8 @@ suspend fun ServerCommandSource.sendPlayerTopStats(playerName: String, page: Int
                 append(" - ${stat.format(value)}")
             }
         }
-        sendFeedback(content.copy().addPageFooter(page, leaderboard.pageCount))
-        storeShareData(label, content)
+        val shareCode = storeShareData(label, content)
+        sendFeedback(content.copy().addPageFooter(page, leaderboard.pageCount, shareCode))
         registerPageAction(max = leaderboard.pageCount) { sendPlayerTopStats(playerName, it) }
     } ?: sendError(Text.translatable("playerstatistics.argument.player.unknown", playerName))
 }
