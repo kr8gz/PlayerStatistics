@@ -18,6 +18,7 @@ import net.minecraft.command.argument.UuidArgumentType
 import net.minecraft.registry.Registries
 import net.minecraft.registry.Registry
 import net.minecraft.registry.RegistryKey
+import net.minecraft.resource.featuretoggle.ToggleableFeature
 import net.minecraft.server.command.CommandManager.argument
 import net.minecraft.server.command.CommandManager.literal
 import net.minecraft.server.command.ServerCommandSource
@@ -68,11 +69,6 @@ class StatsCommand(
         return 0 // no meaningful immediate return value
     }
 
-    private companion object {
-        private fun <T> StatType<T>.getAll() = registry.map(::getOrCreateStat)
-        val ALL_STATS = Registries.STAT_TYPE.flatMap { it.getAll() }
-    }
-
     private fun <T : ArgumentBuilder<ServerCommandSource, T>> T.executesWithStatArgument(command: (context: ServerCommandContext, stat: Stat<*>) -> Int): T {
         fun <T : ArgumentBuilder<ServerCommandSource, T>, S> T.addArgumentsForStatType(statType: StatType<S>, shortIds: Boolean = false): T {
             @Suppress("UNCHECKED_CAST") // casting <out T> to <T> is safe for reading only
@@ -97,7 +93,13 @@ class StatsCommand(
                 this.then(literal(key.value.path).addArgumentsForStatType(statType))
         }
 
-        return this.then(literal("random").executes { context -> command(context, ALL_STATS.random()) })
+        return this.then(literal("random").executes { context ->
+            fun <T> StatType<T>.getAll() = registry
+                .filter { it !is ToggleableFeature || it.isEnabled(context.source.enabledFeatures) }
+                .map(::getOrCreateStat)
+
+            command(context, Registries.STAT_TYPE.flatMap { it.getAll() }.random())
+        })
     }
 
     init {

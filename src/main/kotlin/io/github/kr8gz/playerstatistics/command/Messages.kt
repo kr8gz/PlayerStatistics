@@ -8,6 +8,7 @@ import net.minecraft.item.Item
 import net.minecraft.item.Items
 import net.minecraft.server.command.ServerCommandSource
 import net.minecraft.stat.Stat
+import net.minecraft.stat.StatFormatter
 import net.minecraft.stat.Stats
 import net.minecraft.text.*
 import net.minecraft.util.Identifier
@@ -19,7 +20,11 @@ private object Colors {
     const val WHITE = 0xFFFFFF
     const val GRAY = 0xAAAAAA
     const val DARK_GRAY = 0x555555
+
+    const val HEART = 0xFF0000
 }
+
+private val decimalFormatter = DecimalFormat(",###.##", DecimalFormatSymbols())
 
 private fun Stat<*>.formatName(): MutableText {
     fun formatWithStatType(statText: Text): MutableText {
@@ -36,6 +41,33 @@ private fun Stat<*>.formatName(): MutableText {
         is EntityType<*> -> formatWithStatType(obj.name)
         is Identifier -> Text.translatable("stat.${obj.toTranslationKey()}")
         else -> Text.literal(name)
+    }
+}
+
+private fun Stat<*>.formatValue(value: Int) = when (formatter) {
+    StatFormatter.DISTANCE -> {
+        Text.literal(format(value)).styled {
+            val hoverText = Text.translatable("playerstatistics.format.blocks", decimalFormatter.format(value / 100.0))
+            it.withHoverEvent(HoverEvent(HoverEvent.Action.SHOW_TEXT, hoverText))
+        }
+    }
+    StatFormatter.DIVIDE_BY_TEN -> {
+        Text.literal(decimalFormatter.format(value / 20.0)).apply {
+            append(Text.literal(" ❤").withColor(Colors.HEART))
+            styled {
+                val hoverText = Text.translatable("playerstatistics.format.damage", decimalFormatter.format(value / 10.0))
+                it.withHoverEvent(HoverEvent(HoverEvent.Action.SHOW_TEXT, hoverText))
+            }
+        }
+    }
+    StatFormatter.TIME -> {
+        Text.literal(format(value)).styled {
+            val hoverText = Text.translatable("playerstatistics.format.ticks", StatFormatter.DEFAULT.format(value))
+            it.withHoverEvent(HoverEvent(HoverEvent.Action.SHOW_TEXT, hoverText))
+        }
+    }
+    else -> {
+        Text.literal(format(value))
     }
 }
 
@@ -89,7 +121,8 @@ suspend fun ServerCommandSource.sendLeaderboard(stat: Stat<*>, page: Int = 1) {
     val content = label.copy().apply {
         leaderboard.pageEntries.forEach { (rank, player, value) ->
             append(Text.literal("\n» ").withColor(Colors.DARK_GRAY))
-            append("$rank. $player - ${stat.format(value)}")
+            append("$rank. $player - ")
+            append(stat.formatValue(value))
         }
     }
     val shareCode = storeShareData(label, content)
@@ -105,10 +138,8 @@ suspend fun ServerCommandSource.sendServerTotal(stat: Stat<*>) {
         player?.name?.string?.let { playerName ->
             Leaderboard.Entry.of(stat, playerName)?.takeIf { it.value > 0 }?.let { (_, _, value) ->
                 append("\n")
-                append(Text.translatable("playerstatistics.command.total.contributed", playerName, stat.format(value), run {
-                    val percentageFormat = DecimalFormat("#.##", DecimalFormatSymbols(Locale.US))
-                    percentageFormat.format(value.toFloat() / total * 100)
-                }))
+                val percentage = decimalFormatter.format(value.toFloat() / total * 100)
+                append(Text.translatable("playerstatistics.command.total.contributed", playerName, stat.formatValue(value), percentage))
             }
         }
     }
@@ -120,7 +151,9 @@ suspend fun ServerCommandSource.sendPlayerStat(stat: Stat<*>, playerName: String
     Leaderboard.Entry.of(stat, playerName)?.let { (rank, player, value) ->
         val statText = stat.formatName()
         val label = Text.translatable("playerstatistics.command.player", player, statText)
-        val content = Text.literal("$player: ${stat.format(value)} ").apply {
+        val content = Text.literal("$player: ").apply {
+            append(stat.formatValue(value))
+            append(" ")
             append(statText)
             if (rank > 0) {
                 append(" (")
@@ -146,7 +179,8 @@ suspend fun ServerCommandSource.sendPlayerTopStats(playerName: String, page: Int
                 append(stat.formatName().styled {
                     it.withClickEvent(ClickEvent(ClickEvent.Action.SUGGEST_COMMAND, "/stats leaderboard ${stat.asCommandArguments()}"))
                 })
-                append(" - ${stat.format(value)}")
+                append(" - ")
+                append(stat.formatValue(value))
             }
         }
         val shareCode = storeShareData(label, content)
