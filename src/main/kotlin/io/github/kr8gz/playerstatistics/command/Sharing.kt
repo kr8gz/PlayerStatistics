@@ -10,8 +10,8 @@ private data class ShareData(val label: Text, val content: Text)
 
 private val storedShareData = HashMap<UUID?, ShareData>()
 
-fun ServerCommandSource.storeShareData(header: Text, label: Text) {
-    storedShareData[uuid] = ShareData(header, label)
+fun ServerCommandSource.storeShareData(label: Text, content: Text) {
+    storedShareData[uuid] = ShareData(label, content)
 }
 
 fun ServerCommandSource.shareStoredData() {

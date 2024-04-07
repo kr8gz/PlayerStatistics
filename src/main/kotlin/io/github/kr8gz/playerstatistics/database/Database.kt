@@ -124,7 +124,7 @@ object Database : CoroutineScope {
         }
     }
 
-    data class Leaderboard<T>(val pageEntries: List<Entry<T>>, val totalPages: Int) {
+    data class Leaderboard<T>(val pageEntries: List<Entry<T>>, val pageCount: Int) {
         data class Entry<T>(val rank: Int, val key: T, val value: Int) {
             companion object {
                 /** @return `null` if the player was not found in the database;
@@ -154,15 +154,17 @@ object Database : CoroutineScope {
         companion object {
             private const val pageSize = 8 // default chat size 10 minus rows for header and footer
 
-            private fun <T> ResultSet.generateLeaderboard(pageCount: ResultSet.() -> Int, entryBuilder: ResultSet.() -> Entry<T>?): Leaderboard<T> {
+            private inline fun <T> ResultSet.generateLeaderboard(
+                crossinline pageCount: ResultSet.() -> Int,
+                crossinline entryBuilder: ResultSet.() -> Entry<T>?
+            ): Leaderboard<T> {
                 var pages: Int? = null
-                val entries = generateSequence {
-                    this.takeIf { next() }?.run {
-                        if (pages == null) pages = pageCount()
-                        entryBuilder()
-                    }
-                }.toList()
-                return Leaderboard(entries, pages ?: 0)
+                val entries = mutableListOf<Entry<T>>()
+                while (next()) {
+                    if (pages == null) pages = pageCount()
+                    entryBuilder()?.let(entries::add)
+                }
+                return Leaderboard(entries, pages.takeIf { entries.isNotEmpty() } ?: 0)
             }
 
             /** @return key = player name */

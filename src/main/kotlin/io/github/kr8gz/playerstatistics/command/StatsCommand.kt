@@ -22,6 +22,7 @@ import net.minecraft.stat.StatType
 import net.minecraft.stat.Stats
 import net.minecraft.text.Text
 import java.util.*
+import java.util.concurrent.ConcurrentHashMap
 
 typealias ServerCommandContext = CommandContext<ServerCommandSource>
 
@@ -44,17 +45,16 @@ class StatsCommand(
         )
     }
 
-    private val databaseUsers = HashSet<UUID?>()
+    private val databaseUsers = ConcurrentHashMap.newKeySet<UUID?>()
 
-    private inline fun useDatabase(context: ServerCommandContext, crossinline command: suspend Database.() -> Unit): Int {
+    private inline fun ServerCommandSource.useDatabase(crossinline command: suspend ServerCommandSource.() -> Unit): Int {
         if (Database.Initializer.inProgress) throw Exceptions.DATABASE_INITIALIZING.create()
-        if (!databaseUsers.add(context.source.uuid)) throw Exceptions.ALREADY_RUNNING.create()
+        if (!databaseUsers.add(uuid)) throw Exceptions.ALREADY_RUNNING.create()
+
         Database.launch {
-            context.source.server.playerManager.playerList.forEach {
-                Database.Updater.updateStats(it.statHandler)
-            }
-            Database.command()
-            databaseUsers.remove(context.source.uuid)
+            server.playerManager.playerList.forEach { Database.Updater.updateStats(it.statHandler) }
+            command()
+            databaseUsers.remove(uuid)
         }
         return 0 // no meaningful immediate return value
     }
@@ -65,10 +65,16 @@ class StatsCommand(
     }
 
     private fun <T : ArgumentBuilder<ServerCommandSource, T>> T.executesWithStatArgument(command: (context: ServerCommandContext, stat: Stat<*>) -> Int): T {
-        fun <T : ArgumentBuilder<ServerCommandSource, T>, S> T.addArgumentsForStatType(statType: StatType<S>): T {
-            @Suppress("UNCHECKED_CAST")
+        fun <T : ArgumentBuilder<ServerCommandSource, T>, S> T.addArgumentsForStatType(statType: StatType<S>, shortIds: Boolean = false): T {
+            @Suppress("UNCHECKED_CAST") // casting <out T> to <T> is safe for reading only
             val registryKey = statType.registry.key as RegistryKey<Registry<S>>
-            return this.then(argument(Arguments.STAT, RegistryEntryArgumentType.registryEntry(registryAccess, registryKey)).executes { context ->
+            val argument = argument(Arguments.STAT, RegistryEntryArgumentType.registryEntry(registryAccess, registryKey))
+
+            if (shortIds) argument.suggests { _, builder ->
+                CommandSource.suggestMatching(statType.registry.ids.map { it.toShortString() }, builder)
+            }
+
+            return this.then(argument.executes { context ->
                 val entry = RegistryEntryArgumentType.getRegistryEntry(context, Arguments.STAT, registryKey)
                 command(context, statType.getOrCreateStat(entry.value()))
             })
@@ -77,7 +83,7 @@ class StatsCommand(
         Registries.STAT_TYPE.entrySet.forEach { (key, statType) ->
             // add custom ones directly to the outer level to make them easier to find
             if (statType == Stats.CUSTOM)
-                this.addArgumentsForStatType(statType)
+                this.addArgumentsForStatType(statType, shortIds = true)
             else
                 this.then(literal(key.value.path).addArgumentsForStatType(statType))
         }
@@ -88,37 +94,37 @@ class StatsCommand(
     init {
         dispatcher.register(literal("stats")
             .then(literal("leaderboard").executesWithStatArgument { context, stat ->
-                useDatabase(context) { context.source.sendLeaderboard(stat) }
+                context.source.useDatabase { sendLeaderboard(stat) }
             })
             .then(literal("total").executesWithStatArgument { context, stat ->
-                useDatabase(context) { context.source.sendServerTotal(stat) }
+                context.source.useDatabase { sendServerTotal(stat) }
             })
             .then(literal("player")
                 .then(argument(Arguments.PLAYER, StringArgumentType.word())
                     .suggests { _, builder -> CommandSource.suggestMatching(Database.playerNames, builder) }
                     .executesWithStatArgument { context, stat ->
                         val player = StringArgumentType.getString(context, Arguments.PLAYER)
-                        useDatabase(context) { context.source.sendPlayerStat(stat, player) }
+                        context.source.useDatabase { sendPlayerStat(stat, player) }
                     }
                 )
             )
             .then(literal("top")
                 .executes { context ->
                     val player = context.source.playerOrThrow.name.string
-                    useDatabase(context) { context.source.sendPlayerTopStats(player) }
+                    context.source.useDatabase { sendPlayerTopStats(player) }
                 }
                 .then(argument(Arguments.PLAYER, StringArgumentType.word())
                     .suggests { _, builder -> CommandSource.suggestMatching(Database.playerNames, builder) }
                     .executes { context ->
                         val player = StringArgumentType.getString(context, Arguments.PLAYER)
-                        useDatabase(context) { context.source.sendPlayerTopStats(player) }
+                        context.source.useDatabase { sendPlayerTopStats(player) }
                     }
                 )
             )
             .then(literal("page")
                 .then(argument(Arguments.PAGE, IntegerArgumentType.integer(1)).executes { context ->
                     val page = IntegerArgumentType.getInteger(context, Arguments.PAGE)
-                    useDatabase(context) { context.source.runPageAction(page) }
+                    context.source.useDatabase { runPageAction(page) }
                 })
             )
             .then(literal("share").executes { context -> context.source.shareStoredData(); 0 })
