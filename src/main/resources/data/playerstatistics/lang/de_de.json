@@ -2,6 +2,7 @@
   "playerstatistics.argument.player.unknown": "Spieler %s wurde in der Datenbank nicht gefunden",
   "playerstatistics.argument.statistic.unknown": "Unbekannte Statistik '%s'",
   "playerstatistics.command.leaderboard": "Rangliste für %s",
+  "playerstatistics.command.leaderboard.hint": "Zeige Rangliste für diese Statistik",
   "playerstatistics.command.page": "Seite %s von %s",
   "playerstatistics.command.page.next": "Nächste Seite",
   "playerstatistics.command.page.no_data": "Für diese Seite wurden keine Daten gefunden",

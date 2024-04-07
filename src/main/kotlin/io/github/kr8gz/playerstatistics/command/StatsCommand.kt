@@ -121,7 +121,7 @@ class StatsCommand(
             )
             .then(literal("top")
                 .executes { context ->
-                    val player = context.source.playerOrThrow.name.string
+                    val player = context.source.playerOrThrow.gameProfile.name
                     context.source.useDatabase { sendPlayerTopStats(player) }
                 }
                 .then(argument(Arguments.PLAYER, StringArgumentType.word())

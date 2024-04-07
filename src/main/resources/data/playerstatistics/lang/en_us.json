@@ -2,6 +2,7 @@
   "playerstatistics.argument.player.unknown": "Player %s was not found in the database",
   "playerstatistics.argument.statistic.unknown": "Unknown statistic '%s'",
   "playerstatistics.command.leaderboard": "Leaderboard for %s",
+  "playerstatistics.command.leaderboard.hint": "Show the leaderboard for this statistic",
   "playerstatistics.command.page": "Page %s of %s",
   "playerstatistics.command.page.next": "Next page",
   "playerstatistics.command.page.no_data": "No data found for that page",
