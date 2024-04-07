@@ -9,6 +9,8 @@ import com.mojang.brigadier.exceptions.CommandSyntaxException
 import com.mojang.brigadier.exceptions.SimpleCommandExceptionType
 import io.github.kr8gz.playerstatistics.PlayerStatistics
 import io.github.kr8gz.playerstatistics.database.Database
+import io.github.kr8gz.playerstatistics.extensions.Identifier.toShortString
+import io.github.kr8gz.playerstatistics.extensions.ServerCommandSource.uuid
 import kotlinx.coroutines.launch
 import me.lucko.fabric.api.permissions.v0.Permissions
 import net.minecraft.command.CommandRegistryAccess
@@ -28,8 +30,6 @@ import net.minecraft.stat.Stats
 import net.minecraft.text.Text
 import java.util.*
 import java.util.concurrent.ConcurrentHashMap
-
-typealias ServerCommandContext = CommandContext<ServerCommandSource>
 
 class StatsCommand(
     dispatcher: CommandDispatcher<ServerCommandSource>,
@@ -69,7 +69,7 @@ class StatsCommand(
         return 0 // no meaningful immediate return value
     }
 
-    private fun <T : ArgumentBuilder<ServerCommandSource, T>> T.executesWithStatArgument(command: (context: ServerCommandContext, stat: Stat<*>) -> Int): T {
+    private fun <T : ArgumentBuilder<ServerCommandSource, T>> T.executesWithStatArgument(command: (context: CommandContext<ServerCommandSource>, stat: Stat<*>) -> Int): T {
         fun <T : ArgumentBuilder<ServerCommandSource, T>, S> T.addArgumentsForStatType(statType: StatType<S>, shortIds: Boolean = false): T {
             @Suppress("UNCHECKED_CAST") // casting <out T> to <T> is safe for reading only
             val registryKey = statType.registry.key as RegistryKey<Registry<S>>

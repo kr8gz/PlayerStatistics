@@ -1,5 +1,6 @@
 package io.github.kr8gz.playerstatistics.command
 
+import io.github.kr8gz.playerstatistics.extensions.ServerCommandSource.uuid
 import net.minecraft.server.command.ServerCommandSource
 import net.minecraft.text.HoverEvent
 import net.minecraft.text.Text
