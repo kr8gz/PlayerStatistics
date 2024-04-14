@@ -181,7 +181,7 @@ object Database : CoroutineScope {
                     highlight AS (SELECT pos highlight FROM leaderboard WHERE ${Players.name} = ? LIMIT 1),
                     page_offset AS (SELECT $pageSize - EXISTS(SELECT 1 FROM highlight) page_offset),
                     $pageCount AS (
-                        SELECT CEIL(1.0 * ((SELECT MAX(pos) FROM leaderboard) - (highlight IS NOT NULL)) / page_offset) $pageCount
+                        SELECT MAX(CEIL(1.0 * ((SELECT MAX(pos) FROM leaderboard) - (highlight IS NOT NULL)) / page_offset), highlight IS NOT NULL) $pageCount
                         FROM page_offset LEFT JOIN highlight
                     )
                     SELECT ${RankedStatistics.rank}, ${Players.name}, ${Statistics.value}, $pageCount
