@@ -101,7 +101,7 @@ object StatsCommand {
         }
     }
 
-    private inline fun CommandNodeBuilder.playerArgument(builder: ArgumentBuilder<String>) {
+    private inline fun CommandNodeBuilder.playerArgument(optional: Boolean = false, builder: ArgumentBuilder<String>) {
         argument<String>(Arguments.PLAYER) { player ->
             brigadier {
                 suggests { _, builder ->
@@ -110,6 +110,7 @@ object StatsCommand {
             }
             builder(player)
         }
+        if (optional) builder { source.playerOrThrow.gameProfile.name }
     }
 
     private inline fun CommandNodeBuilder.executes(crossinline command: ServerCommandContext.() -> Unit) {
@@ -147,13 +148,10 @@ object StatsCommand {
             }
 
             literal("top") {
-                executes {
-                    val player = source.playerOrThrow.gameProfile.name
-                    usingDatabase { source.sendPlayerTopStats(player) }
-                }
-                playerArgument { player ->
+                playerArgument(optional = true) {
                     executes {
-                        usingDatabase { source.sendPlayerTopStats(player()) }
+                        val player = it()
+                        usingDatabase { source.sendPlayerTopStats(player) }
                     }
                 }
             }
