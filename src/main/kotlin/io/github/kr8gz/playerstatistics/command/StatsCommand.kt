@@ -11,21 +11,24 @@ import io.github.kr8gz.playerstatistics.extensions.ServerCommandSource.uuid
 import kotlinx.coroutines.launch
 import me.lucko.fabric.api.permissions.v0.Permissions
 import net.minecraft.command.CommandRegistryAccess
+import net.minecraft.command.CommandSource
 import net.minecraft.command.argument.RegistryEntryArgumentType
 import net.minecraft.registry.Registries
 import net.minecraft.resource.featuretoggle.ToggleableFeature
 import net.minecraft.server.command.ServerCommandSource
-import net.minecraft.stat.*
+import net.minecraft.stat.Stat
+import net.minecraft.stat.StatType
+import net.minecraft.stat.Stats
 import net.minecraft.text.Text
+import net.silkmc.silk.commands.CommandBuilder
 import net.silkmc.silk.commands.command
 import java.util.*
 import java.util.concurrent.ConcurrentHashMap
-import net.silkmc.silk.commands.CommandBuilder as SilkCommandBuilder
 
 typealias ServerCommandContext = CommandContext<ServerCommandSource>
 
-typealias CommandBuilder = SilkCommandBuilder<ServerCommandSource, *, *>
-typealias ArgumentBuilder<T> = CommandBuilder.(ServerCommandContext.() -> T) -> Unit
+typealias CommandNodeBuilder = CommandBuilder<ServerCommandSource, *, *>
+typealias ArgumentBuilder<T> = CommandNodeBuilder.(ServerCommandContext.() -> T) -> Unit
 
 object StatsCommand {
     private object Arguments {
@@ -50,7 +53,7 @@ object StatsCommand {
 
     private val databaseUsers = ConcurrentHashMap.newKeySet<UUID>()
 
-    private inline infix fun ServerCommandContext.usingDatabase(crossinline command: suspend ServerCommandContext.() -> Unit) {
+    private inline fun ServerCommandContext.usingDatabase(crossinline command: suspend ServerCommandContext.() -> Unit) {
         if (Database.Initializer.inProgress) throw Exceptions.DATABASE_INITIALIZING.create()
         if (!databaseUsers.add(source.uuid)) throw Exceptions.ALREADY_RUNNING.create()
 
@@ -63,29 +66,29 @@ object StatsCommand {
         }
     }
 
-    private fun CommandBuilder.statArgument(builder: ArgumentBuilder<Stat<*>>) {
-        fun <T> CommandBuilder.addArgumentsForStatType(statType: StatType<T>, shortIds: Boolean = false) {
+    private fun CommandNodeBuilder.statArgument(builder: ArgumentBuilder<Stat<*>>) {
+        fun <T> CommandNodeBuilder.addArgumentsForStatType(statType: StatType<T>, shortIds: Boolean = false) {
             val argumentType = { registryAccess: CommandRegistryAccess ->
                 RegistryEntryArgumentType.registryEntry(registryAccess, statType.registry.key)
             }
             argument(Arguments.STAT, argumentType) { stat ->
-                if (shortIds) suggestList {
-                    statType.registry.ids.map { it.toShortString() }
+                if (shortIds) brigadier {
+                    suggests { _, builder ->
+                        CommandSource.suggestMatching(statType.registry.ids.map { it.toShortString() }, builder)
+                    }
                 }
                 builder { statType.getOrCreateStat(stat().value()) }
             }
         }
 
-        Registries.STAT_TYPE.entrySet.forEach { (key, statType) ->
-            // add custom ones directly to the outer level to make them easier to find
-            if (statType == Stats.CUSTOM) {
-                addArgumentsForStatType(statType, shortIds = true)
-            } else {
-                literal(key.value.path) {
-                    addArgumentsForStatType(statType)
-                }
+        Registries.STAT_TYPE.entrySet.filter { it != Stats.CUSTOM }.sortedBy { it.key.value }.forEach { (key, statType) ->
+            literal(key.value.path) {
+                addArgumentsForStatType(statType)
             }
         }
+
+        // add custom stats directly to the outer level to make them easier to find
+        addArgumentsForStatType(Stats.CUSTOM, shortIds = true)
 
         literal("random") {
             builder {
@@ -98,10 +101,20 @@ object StatsCommand {
         }
     }
 
-    private inline fun CommandBuilder.playerArgument(builder: ArgumentBuilder<String>) {
+    private inline fun CommandNodeBuilder.playerArgument(builder: ArgumentBuilder<String>) {
         argument<String>(Arguments.PLAYER) { player ->
-            suggestList { Database.playerNames }
+            brigadier {
+                suggests { _, builder ->
+                    CommandSource.suggestMatching(Database.playerNames, builder)
+                }
+            }
             builder(player)
+        }
+    }
+
+    private inline fun CommandNodeBuilder.executes(crossinline command: ServerCommandContext.() -> Unit) {
+        brigadier {
+            executes { it.command(); 0 }
         }
     }
 
@@ -109,7 +122,7 @@ object StatsCommand {
         command("stats") {
             literal("leaderboard") {
                 statArgument { stat ->
-                    runs {
+                    executes {
                         usingDatabase { source.sendLeaderboard(stat()) }
                     }
                 }
@@ -117,7 +130,7 @@ object StatsCommand {
 
             literal("total") {
                 statArgument { stat ->
-                    runs {
+                    executes {
                         usingDatabase { source.sendServerTotal(stat()) }
                     }
                 }
@@ -126,7 +139,7 @@ object StatsCommand {
             literal("player") {
                 playerArgument { player ->
                     statArgument { stat ->
-                        runs {
+                        executes {
                             usingDatabase { source.sendPlayerStat(stat(), player()) }
                         }
                     }
@@ -134,12 +147,12 @@ object StatsCommand {
             }
 
             literal("top") {
-                runs {
+                executes {
                     val player = source.playerOrThrow.gameProfile.name
                     usingDatabase { source.sendPlayerTopStats(player) }
                 }
                 playerArgument { player ->
-                    runs {
+                    executes {
                         usingDatabase { source.sendPlayerTopStats(player()) }
                     }
                 }
@@ -147,7 +160,7 @@ object StatsCommand {
 
             literal("page") {
                 argument(Arguments.PAGE, IntegerArgumentType.integer(1)) { page ->
-                    runs {
+                    executes {
                         usingDatabase { source.runPageAction(page()) }
                     }
                 }
@@ -155,9 +168,9 @@ object StatsCommand {
 
             literal("share") {
                 requires { Permissions.check(it, PlayerStatistics.Permissions.SHARE, true) }
-                runs { source.shareStoredData() }
+                executes { source.shareStoredData() }
                 argument<UUID>(Arguments.CODE) { code ->
-                    runs { source.shareStoredData(code()) }
+                    executes { source.shareStoredData(code()) }
                 }
             }
         }

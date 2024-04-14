@@ -1,9 +1,6 @@
 package io.github.kr8gz.playerstatistics.messages
 
-import net.minecraft.text.ClickEvent
-import net.minecraft.text.HoverEvent
-import net.minecraft.text.Text
-import net.minecraft.text.Texts
+import net.minecraft.text.*
 import java.util.*
 
 object Components {
