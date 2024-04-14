@@ -13,9 +13,11 @@ private data class ShareData(val label: Text, val content: Text, var shared: Boo
 
 private val storedShareData = ConcurrentHashMap<UUID, LinkedHashMap<UUID, ShareData>>()
 
+private const val PLAYER_SAVE_LIMIT = 20
+
 private fun getShareDataFor(uuid: UUID) = storedShareData.getOrPut(uuid) {
     object : LinkedHashMap<UUID, ShareData>() {
-        override fun removeEldestEntry(eldest: Map.Entry<UUID, ShareData>?) = size > 20
+        override fun removeEldestEntry(eldest: Map.Entry<UUID, ShareData>?) = size > PLAYER_SAVE_LIMIT
     }
 }
 

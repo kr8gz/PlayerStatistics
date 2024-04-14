@@ -39,6 +39,10 @@ dependencies {
     modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_version}"
     modImplementation "net.fabricmc:fabric-language-kotlin:${project.fabric_kotlin_version}"
 
+    // Silk API
+    include modImplementation("net.silkmc:silk-core:${project.silk_version}")
+    include modImplementation("net.silkmc:silk-commands:${project.silk_version}")
+
     // Database
     modImplementation "maven.modrinth:sqlite-jdbc:${project.sqlite_jdbc_version}"
 

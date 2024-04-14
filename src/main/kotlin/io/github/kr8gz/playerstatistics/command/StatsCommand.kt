@@ -1,9 +1,6 @@
 package io.github.kr8gz.playerstatistics.command
 
-import com.mojang.brigadier.CommandDispatcher
 import com.mojang.brigadier.arguments.IntegerArgumentType
-import com.mojang.brigadier.arguments.StringArgumentType
-import com.mojang.brigadier.builder.ArgumentBuilder
 import com.mojang.brigadier.context.CommandContext
 import com.mojang.brigadier.exceptions.CommandSyntaxException
 import com.mojang.brigadier.exceptions.SimpleCommandExceptionType
@@ -14,27 +11,23 @@ import io.github.kr8gz.playerstatistics.extensions.ServerCommandSource.uuid
 import kotlinx.coroutines.launch
 import me.lucko.fabric.api.permissions.v0.Permissions
 import net.minecraft.command.CommandRegistryAccess
-import net.minecraft.command.CommandSource
 import net.minecraft.command.argument.RegistryEntryArgumentType
-import net.minecraft.command.argument.UuidArgumentType
 import net.minecraft.registry.Registries
-import net.minecraft.registry.Registry
-import net.minecraft.registry.RegistryKey
 import net.minecraft.resource.featuretoggle.ToggleableFeature
-import net.minecraft.server.command.CommandManager.argument
-import net.minecraft.server.command.CommandManager.literal
 import net.minecraft.server.command.ServerCommandSource
-import net.minecraft.stat.Stat
-import net.minecraft.stat.StatType
-import net.minecraft.stat.Stats
+import net.minecraft.stat.*
 import net.minecraft.text.Text
+import net.silkmc.silk.commands.command
 import java.util.*
 import java.util.concurrent.ConcurrentHashMap
+import net.silkmc.silk.commands.CommandBuilder as SilkCommandBuilder
 
-class StatsCommand(
-    dispatcher: CommandDispatcher<ServerCommandSource>,
-    private val registryAccess: CommandRegistryAccess,
-) {
+typealias ServerCommandContext = CommandContext<ServerCommandSource>
+
+typealias CommandBuilder = SilkCommandBuilder<ServerCommandSource, *, *>
+typealias ArgumentBuilder<T> = CommandBuilder.(ServerCommandContext.() -> T) -> Unit
+
+object StatsCommand {
     private object Arguments {
         const val STAT = "stat"
         const val PLAYER = "player"
@@ -57,95 +50,116 @@ class StatsCommand(
 
     private val databaseUsers = ConcurrentHashMap.newKeySet<UUID>()
 
-    private inline fun ServerCommandSource.useDatabase(crossinline command: suspend ServerCommandSource.() -> Unit): Int {
+    private inline infix fun ServerCommandContext.usingDatabase(crossinline command: suspend ServerCommandContext.() -> Unit) {
         if (Database.Initializer.inProgress) throw Exceptions.DATABASE_INITIALIZING.create()
-        if (!databaseUsers.add(uuid)) throw Exceptions.ALREADY_RUNNING.create()
+        if (!databaseUsers.add(source.uuid)) throw Exceptions.ALREADY_RUNNING.create()
 
         Database.launch {
-            server.playerManager.playerList.forEach { Database.Updater.updateStats(it.statHandler) }
+            source.server.playerManager.playerList.forEach {
+                Database.Updater.updateStats(it.statHandler)
+            }
             command()
-            databaseUsers.remove(uuid)
+            databaseUsers.remove(source.uuid)
         }
-        return 0 // no meaningful immediate return value
     }
 
-    private fun <T : ArgumentBuilder<ServerCommandSource, T>> T.executesWithStatArgument(command: (context: CommandContext<ServerCommandSource>, stat: Stat<*>) -> Int): T {
-        fun <T : ArgumentBuilder<ServerCommandSource, T>, S> T.addArgumentsForStatType(statType: StatType<S>, shortIds: Boolean = false): T {
-            @Suppress("UNCHECKED_CAST") // casting <out T> to <T> is safe for reading only
-            val registryKey = statType.registry.key as RegistryKey<Registry<S>>
-            val argument = argument(Arguments.STAT, RegistryEntryArgumentType.registryEntry(registryAccess, registryKey))
-
-            if (shortIds) argument.suggests { _, builder ->
-                CommandSource.suggestMatching(statType.registry.ids.map { it.toShortString() }, builder)
+    private fun CommandBuilder.statArgument(builder: ArgumentBuilder<Stat<*>>) {
+        fun <T> CommandBuilder.addArgumentsForStatType(statType: StatType<T>, shortIds: Boolean = false) {
+            val argumentType = { registryAccess: CommandRegistryAccess ->
+                RegistryEntryArgumentType.registryEntry(registryAccess, statType.registry.key)
             }
-
-            return this.then(argument.executes { context ->
-                val entry = RegistryEntryArgumentType.getRegistryEntry(context, Arguments.STAT, registryKey)
-                command(context, statType.getOrCreateStat(entry.value()))
-            })
+            argument(Arguments.STAT, argumentType) { stat ->
+                if (shortIds) suggestList {
+                    statType.registry.ids.map { it.toShortString() }
+                }
+                builder { statType.getOrCreateStat(stat().value()) }
+            }
         }
 
         Registries.STAT_TYPE.entrySet.forEach { (key, statType) ->
             // add custom ones directly to the outer level to make them easier to find
-            if (statType == Stats.CUSTOM)
-                this.addArgumentsForStatType(statType, shortIds = true)
-            else
-                this.then(literal(key.value.path).addArgumentsForStatType(statType))
+            if (statType == Stats.CUSTOM) {
+                addArgumentsForStatType(statType, shortIds = true)
+            } else {
+                literal(key.value.path) {
+                    addArgumentsForStatType(statType)
+                }
+            }
         }
 
-        return this.then(literal("random").executes { context ->
-            fun <T> StatType<T>.getAll() = registry
-                .filter { it !is ToggleableFeature || it.isEnabled(context.source.enabledFeatures) }
-                .map(::getOrCreateStat)
+        literal("random") {
+            builder {
+                fun <T> StatType<T>.getAll() = registry
+                    .filter { it !is ToggleableFeature || it.isEnabled(source.enabledFeatures) }
+                    .map(::getOrCreateStat)
 
-            command(context, Registries.STAT_TYPE.flatMap { it.getAll() }.random())
-        })
+                Registries.STAT_TYPE.flatMap { it.getAll() }.random()
+            }
+        }
+    }
+
+    private inline fun CommandBuilder.playerArgument(builder: ArgumentBuilder<String>) {
+        argument<String>(Arguments.PLAYER) { player ->
+            suggestList { Database.playerNames }
+            builder(player)
+        }
     }
 
     init {
-        dispatcher.register(literal("stats")
-            .then(literal("leaderboard").executesWithStatArgument { context, stat ->
-                context.source.useDatabase { sendLeaderboard(stat) }
-            })
-            .then(literal("total").executesWithStatArgument { context, stat ->
-                context.source.useDatabase { sendServerTotal(stat) }
-            })
-            .then(literal("player")
-                .then(argument(Arguments.PLAYER, StringArgumentType.word())
-                    .suggests { _, builder -> CommandSource.suggestMatching(Database.playerNames, builder) }
-                    .executesWithStatArgument { context, stat ->
-                        val player = StringArgumentType.getString(context, Arguments.PLAYER)
-                        context.source.useDatabase { sendPlayerStat(stat, player) }
+        command("stats") {
+            literal("leaderboard") {
+                statArgument { stat ->
+                    runs {
+                        usingDatabase { source.sendLeaderboard(stat()) }
                     }
-                )
-            )
-            .then(literal("top")
-                .executes { context ->
-                    val player = context.source.playerOrThrow.gameProfile.name
-                    context.source.useDatabase { sendPlayerTopStats(player) }
                 }
-                .then(argument(Arguments.PLAYER, StringArgumentType.word())
-                    .suggests { _, builder -> CommandSource.suggestMatching(Database.playerNames, builder) }
-                    .executes { context ->
-                        val player = StringArgumentType.getString(context, Arguments.PLAYER)
-                        context.source.useDatabase { sendPlayerTopStats(player) }
+            }
+
+            literal("total") {
+                statArgument { stat ->
+                    runs {
+                        usingDatabase { source.sendServerTotal(stat()) }
                     }
-                )
-            )
-            .then(literal("page")
-                .then(argument(Arguments.PAGE, IntegerArgumentType.integer(1)).executes { context ->
-                    val page = IntegerArgumentType.getInteger(context, Arguments.PAGE)
-                    context.source.useDatabase { runPageAction(page) }
-                })
-            )
-            .then(literal("share")
-                .requires(Permissions.require(PlayerStatistics.Permissions.SHARE, true))
-                .executes { context -> context.source.shareStoredData(); 0 }
-                .then(argument(Arguments.CODE, UuidArgumentType.uuid()).executes { context ->
-                    val code = UuidArgumentType.getUuid(context, Arguments.CODE)
-                    context.source.shareStoredData(code); 0
-                })
-            )
-        )
+                }
+            }
+
+            literal("player") {
+                playerArgument { player ->
+                    statArgument { stat ->
+                        runs {
+                            usingDatabase { source.sendPlayerStat(stat(), player()) }
+                        }
+                    }
+                }
+            }
+
+            literal("top") {
+                runs {
+                    val player = source.playerOrThrow.gameProfile.name
+                    usingDatabase { source.sendPlayerTopStats(player) }
+                }
+                playerArgument { player ->
+                    runs {
+                        usingDatabase { source.sendPlayerTopStats(player()) }
+                    }
+                }
+            }
+
+            literal("page") {
+                argument(Arguments.PAGE, IntegerArgumentType.integer(1)) { page ->
+                    runs {
+                        usingDatabase { source.runPageAction(page()) }
+                    }
+                }
+            }
+
+            literal("share") {
+                requires { Permissions.check(it, PlayerStatistics.Permissions.SHARE, true) }
+                runs { source.shareStoredData() }
+                argument<UUID>(Arguments.CODE) { code ->
+                    runs { source.shareStoredData(code()) }
+                }
+            }
+        }
     }
 }

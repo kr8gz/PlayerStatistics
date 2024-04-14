@@ -3,7 +3,7 @@ package io.github.kr8gz.playerstatistics.database
 import com.mojang.authlib.GameProfile
 import io.github.kr8gz.playerstatistics.PlayerStatistics
 import io.github.kr8gz.playerstatistics.access.ServerStatHandlerMixinAccess
-import io.github.kr8gz.playerstatistics.extensions.StatHandler.uuid
+import io.github.kr8gz.playerstatistics.extensions.ServerStatHandler.uuid
 import kotlinx.atomicfu.atomic
 import kotlinx.coroutines.*
 import net.minecraft.registry.Registries
@@ -17,7 +17,7 @@ import java.nio.file.Files
 import java.sql.Connection
 import java.sql.DriverManager
 import java.sql.ResultSet
-import java.util.UUID
+import java.util.*
 import kotlin.streams.asSequence
 import kotlin.time.Duration.Companion.seconds
 
