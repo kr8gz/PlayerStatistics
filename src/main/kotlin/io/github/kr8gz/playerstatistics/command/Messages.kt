@@ -1,7 +1,8 @@
 package io.github.kr8gz.playerstatistics.command
 
-import io.github.kr8gz.playerstatistics.database.Database
-import io.github.kr8gz.playerstatistics.database.Database.Leaderboard
+import io.github.kr8gz.playerstatistics.database.Leaderboard
+import io.github.kr8gz.playerstatistics.database.Players
+import io.github.kr8gz.playerstatistics.database.Statistics
 import io.github.kr8gz.playerstatistics.extensions.ServerCommandSource.sendFeedback
 import io.github.kr8gz.playerstatistics.extensions.Text.newLine
 import io.github.kr8gz.playerstatistics.extensions.Text.space
@@ -33,7 +34,7 @@ suspend fun ServerCommandSource.sendLeaderboard(stat: Stat<*>, page: Int = 1) {
 }
 
 suspend fun ServerCommandSource.sendServerTotal(stat: Stat<*>) {
-    val total = Database.serverTotal(stat)
+    val total = Statistics.serverTotal(stat)
 
     val label = Text.translatable("playerstatistics.command.total", stat.formatName())
     val content = literalText {
@@ -41,7 +42,7 @@ suspend fun ServerCommandSource.sendServerTotal(stat: Stat<*>) {
         text(": ")
         text(stat.formatValue(total))
         player?.let { player ->
-            Leaderboard.Entry.of(stat, player.gameProfile.name)?.takeIf { it.value > 0 }?.let { (_, _, value) ->
+            Leaderboard.Entry(stat, player.gameProfile.name)?.takeIf { it.value > 0 }?.let { (_, _, value) ->
                 newLine()
                 text(Text.translatable("playerstatistics.command.total.contributed",
                     player.displayName,
@@ -58,7 +59,7 @@ suspend fun ServerCommandSource.sendServerTotal(stat: Stat<*>) {
 }
 
 suspend fun ServerCommandSource.sendPlayerStat(stat: Stat<*>, playerName: String) {
-    Leaderboard.Entry.of(stat, playerName)?.let { (rank, player, value) ->
+    Leaderboard.Entry(stat, playerName)?.let { (rank, player, value) ->
         val statText = stat.formatName()
 
         val label = Text.translatable("playerstatistics.command.player", player, statText)
@@ -84,7 +85,7 @@ suspend fun ServerCommandSource.sendPlayerStat(stat: Stat<*>, playerName: String
 
 suspend fun ServerCommandSource.sendPlayerTopStats(playerName: String, page: Int = 1) {
     Leaderboard.forPlayer(playerName, page).takeIf { it.pageCount > 0 }?.let { leaderboard ->
-        val label = Text.translatable("playerstatistics.command.top", Database.fixPlayerName(playerName))
+        val label = Text.translatable("playerstatistics.command.top", Players.fixName(playerName))
         val content = literalText {
             text(label)
             leaderboard.pageEntries.forEach { (rank, stat, value) ->

@@ -6,9 +6,10 @@ import com.mojang.brigadier.exceptions.CommandSyntaxException
 import com.mojang.brigadier.exceptions.SimpleCommandExceptionType
 import io.github.kr8gz.playerstatistics.PlayerStatistics
 import io.github.kr8gz.playerstatistics.database.Database
+import io.github.kr8gz.playerstatistics.database.Players
+import io.github.kr8gz.playerstatistics.database.Statistics
 import io.github.kr8gz.playerstatistics.extensions.Identifier.toShortString
 import io.github.kr8gz.playerstatistics.extensions.ServerCommandSource.uuid
-import kotlinx.coroutines.launch
 import me.lucko.fabric.api.permissions.v0.Permissions
 import net.minecraft.command.CommandRegistryAccess
 import net.minecraft.command.CommandSource
@@ -55,12 +56,12 @@ object StatsCommand {
     private val databaseUsers = ConcurrentHashMap.newKeySet<UUID>()
 
     private inline fun ServerCommandContext.usingDatabase(crossinline command: suspend () -> Unit) {
-        if (Database.Initializer.inProgress) throw Exceptions.DATABASE_INITIALIZING.create()
+        if (Database.isInitializing) throw Exceptions.DATABASE_INITIALIZING.create()
         if (!databaseUsers.add(source.uuid)) throw Exceptions.ALREADY_RUNNING.create()
 
-        Database.launch {
+        Database.transaction {
             source.server.playerManager.playerList.forEach {
-                Database.Updater.updateStats(it.statHandler)
+                Statistics.updateStats(it.statHandler)
             }
             command()
             databaseUsers.remove(source.uuid)
@@ -102,7 +103,7 @@ object StatsCommand {
 
     private inline fun CommandNodeBuilder.playerArgument(optional: Boolean = false, builder: ArgumentBuilder<String>) {
         argument<String>(Arguments.PLAYER) { player ->
-            suggests { Database.playerNames }
+            suggests { Players.nameList }
             builder(player)
         }
         if (optional) builder { source.playerOrThrow.gameProfile.name }

@@ -2,7 +2,7 @@ package io.github.kr8gz.playerstatistics
 
 import io.github.kr8gz.playerstatistics.command.StatsCommand
 import io.github.kr8gz.playerstatistics.database.Database
-import io.github.kr8gz.playerstatistics.database.Database.Updater
+import io.github.kr8gz.playerstatistics.database.Players
 import kotlinx.coroutines.launch
 import net.fabricmc.api.DedicatedServerModInitializer
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents
@@ -23,10 +23,10 @@ object PlayerStatistics : DedicatedServerModInitializer {
     override fun onInitializeServer() {
         StatsCommand
 
-        ServerLifecycleEvents.SERVER_STARTING.register(Database.Initializer::invoke)
+        ServerLifecycleEvents.SERVER_STARTING.register(Database::initialize)
 
         ServerPlayConnectionEvents.JOIN.register { handler, _, _ ->
-            Database.launch { Updater.updateProfile(handler.player.gameProfile) }
+            Database.launch { Players.updateProfile(handler.player.gameProfile) }
         }
     }
 }

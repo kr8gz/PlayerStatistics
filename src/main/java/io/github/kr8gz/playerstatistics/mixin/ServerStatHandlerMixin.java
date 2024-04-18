@@ -2,7 +2,7 @@ package io.github.kr8gz.playerstatistics.mixin;
 
 import com.google.common.collect.ImmutableMap;
 import io.github.kr8gz.playerstatistics.access.ServerStatHandlerMixinAccess;
-import io.github.kr8gz.playerstatistics.database.Database;
+import io.github.kr8gz.playerstatistics.database.Statistics;
 import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.stat.ServerStatHandler;
@@ -27,7 +27,7 @@ public abstract class ServerStatHandlerMixin extends StatHandler implements Serv
 
     @Inject(method = "save()V", at = @At("HEAD"))
     private void save(CallbackInfo ci) {
-        Database.Updater.launchStatsUpdate((ServerStatHandler) (Object) this);
+        Statistics.launchStatsUpdate((ServerStatHandler) (Object) this);
     }
 
     @Override
