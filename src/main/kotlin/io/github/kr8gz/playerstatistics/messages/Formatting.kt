@@ -10,22 +10,23 @@ import net.minecraft.stat.Stat
 import net.minecraft.stat.StatFormatter
 import net.minecraft.stat.Stats
 import net.minecraft.text.HoverEvent
-import net.minecraft.text.MutableText
 import net.minecraft.text.Text
 import net.minecraft.util.Identifier
+import net.silkmc.silk.core.text.literalText
 import java.text.DecimalFormat
 import java.text.DecimalFormatSymbols
 
 private val decimalFormatter = DecimalFormat(",###.##", DecimalFormatSymbols())
 fun formatNumber(value: Number): String = decimalFormatter.format(value)
 
-fun Stat<*>.formatName(): MutableText {
-    fun formatWithStatType(statText: Text): MutableText {
+fun Stat<*>.formatName(): Text {
+    fun formatWithStatType(statText: Text): Text {
         return Text.translatable("playerstatistics.stat_type.${type.identifier.toTranslationKey()}", statText)
     }
 
-    fun formatItemText(item: Item) = formatWithStatType(item.name.copy().styled {
-        it.withHoverEvent(HoverEvent(HoverEvent.Action.SHOW_ITEM, HoverEvent.ItemStackContent(item.defaultStack)))
+    fun formatItemText(item: Item) = formatWithStatType(literalText {
+        text(item.name)
+        hoverEvent = HoverEvent(HoverEvent.Action.SHOW_ITEM, HoverEvent.ItemStackContent(item.defaultStack))
     })
 
     return when (val obj = value) {
@@ -33,7 +34,7 @@ fun Stat<*>.formatName(): MutableText {
         is Item -> formatItemText(obj)
         is EntityType<*> -> formatWithStatType(obj.name)
         is Identifier -> Text.translatable("stat.${obj.toTranslationKey()}")
-        else -> Text.literal(name)
+        else -> literalText(name)
     }
 }
 
@@ -45,13 +46,13 @@ fun Stat<*>.formatValue(value: Long): Text = when (formatter) {
         val meters = value / 100.0
         val kilometers = meters / 1000.0
 
-        Text.literal(when {
+        literalText(when {
             kilometers > 0.5 -> kilometers.withUnit("km")
             meters > 0.5 -> meters.withUnit("m")
             else -> value.withUnit("cm")
-        }).styled {
+        }) {
             val hoverText = Text.translatable("playerstatistics.format.blocks", formatNumber(meters))
-            it.withHoverEvent(HoverEvent(HoverEvent.Action.SHOW_TEXT, hoverText))
+            hoverEvent = HoverEvent(HoverEvent.Action.SHOW_TEXT, hoverText) // FIXME why do these not appear
         }
     }
     StatFormatter.TIME -> {
@@ -61,28 +62,26 @@ fun Stat<*>.formatValue(value: Long): Text = when (formatter) {
         val days = hours / 24.0
         val years = days / 365.0
 
-        Text.literal(when {
+        literalText(when {
             years > 0.5 -> years.withUnit("y")
             days > 0.5 -> days.withUnit("d")
             hours > 0.5 -> hours.withUnit("h")
             minutes > 0.5 -> minutes.withUnit("m")
             else -> seconds.withUnit("s")
-        }).styled {
+        }) {
             val hoverText = Text.translatable("playerstatistics.format.ticks", formatNumber(value))
-            it.withHoverEvent(HoverEvent(HoverEvent.Action.SHOW_TEXT, hoverText))
+            hoverEvent = HoverEvent(HoverEvent.Action.SHOW_TEXT, hoverText)
         }
     }
     StatFormatter.DIVIDE_BY_TEN -> {
-        Text.literal(formatNumber(value / 20.0)).apply {
-            append(Text.literal(" ❤").withColor(Colors.HEART))
-            styled {
-                val hoverText = Text.translatable("playerstatistics.format.damage", formatNumber(value / 10.0))
-                it.withHoverEvent(HoverEvent(HoverEvent.Action.SHOW_TEXT, hoverText))
-            }
+        literalText(formatNumber(value / 20.0)) {
+            text(" ❤") { color = Colors.HEART }
+            val hoverText = Text.translatable("playerstatistics.format.damage", formatNumber(value / 10.0))
+            hoverEvent = HoverEvent(HoverEvent.Action.SHOW_TEXT, hoverText)
         }
     }
     else -> {
-        Text.literal(formatNumber(value))
+        literalText(formatNumber(value))
     }
 }
 

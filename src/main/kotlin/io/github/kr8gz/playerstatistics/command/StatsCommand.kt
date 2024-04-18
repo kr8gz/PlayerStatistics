@@ -20,6 +20,7 @@ import net.minecraft.stat.Stat
 import net.minecraft.stat.StatType
 import net.minecraft.stat.Stats
 import net.minecraft.text.Text
+import net.silkmc.silk.commands.ArgumentCommandBuilder
 import net.silkmc.silk.commands.CommandBuilder
 import net.silkmc.silk.commands.command
 import java.util.*
@@ -53,7 +54,7 @@ object StatsCommand {
 
     private val databaseUsers = ConcurrentHashMap.newKeySet<UUID>()
 
-    private inline fun ServerCommandContext.usingDatabase(crossinline command: suspend ServerCommandContext.() -> Unit) {
+    private inline fun ServerCommandContext.usingDatabase(crossinline command: suspend () -> Unit) {
         if (Database.Initializer.inProgress) throw Exceptions.DATABASE_INITIALIZING.create()
         if (!databaseUsers.add(source.uuid)) throw Exceptions.ALREADY_RUNNING.create()
 
@@ -72,10 +73,8 @@ object StatsCommand {
                 RegistryEntryArgumentType.registryEntry(registryAccess, statType.registry.key)
             }
             argument(Arguments.STAT, argumentType) { stat ->
-                if (shortIds) brigadier {
-                    suggests { _, builder ->
-                        CommandSource.suggestMatching(statType.registry.ids.map { it.toShortString() }, builder)
-                    }
+                if (shortIds) suggests {
+                    statType.registry.ids.map { it.toShortString() }
                 }
                 builder { statType.getOrCreateStat(stat().value()) }
             }
@@ -103,11 +102,7 @@ object StatsCommand {
 
     private inline fun CommandNodeBuilder.playerArgument(optional: Boolean = false, builder: ArgumentBuilder<String>) {
         argument<String>(Arguments.PLAYER) { player ->
-            brigadier {
-                suggests { _, builder ->
-                    CommandSource.suggestMatching(Database.playerNames, builder)
-                }
-            }
+            suggests { Database.playerNames }
             builder(player)
         }
         if (optional) builder { source.playerOrThrow.gameProfile.name }
@@ -116,6 +111,14 @@ object StatsCommand {
     private inline fun CommandNodeBuilder.executes(crossinline command: ServerCommandContext.() -> Unit) {
         brigadier {
             executes { it.command(); 0 }
+        }
+    }
+
+    private inline fun ArgumentCommandBuilder<*, *>.suggests(crossinline values: CommandContext<*>.() -> Iterable<String>) {
+        brigadier {
+            suggests { context, builder ->
+                CommandSource.suggestMatching(values(context), builder)
+            }
         }
     }
 
@@ -150,7 +153,7 @@ object StatsCommand {
             literal("top") {
                 playerArgument(optional = true) {
                     executes {
-                        val player = it()
+                        val player = it() // don't throw in coroutine
                         usingDatabase { source.sendPlayerTopStats(player) }
                     }
                 }

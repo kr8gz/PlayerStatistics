@@ -1,7 +1,7 @@
 package io.github.kr8gz.playerstatistics.command
 
-import io.github.kr8gz.playerstatistics.extensions.MutableText.plus
 import io.github.kr8gz.playerstatistics.extensions.ServerCommandSource.uuid
+import io.github.kr8gz.playerstatistics.extensions.Text.space
 import net.minecraft.server.command.ServerCommandSource
 import net.minecraft.text.HoverEvent
 import net.minecraft.text.Text
@@ -41,5 +41,5 @@ fun ServerCommandSource.shareStoredData(code: UUID? = null) {
         it.withHoverEvent(HoverEvent(HoverEvent.Action.SHOW_TEXT, data.content))
     }
     val message = Text.translatable("playerstatistics.command.share.message", entity?.displayName ?: name, data.label)
-    server.playerManager.broadcast(message + " " + hoverText, false)
+    server.playerManager.broadcast(message space hoverText, false)
 }

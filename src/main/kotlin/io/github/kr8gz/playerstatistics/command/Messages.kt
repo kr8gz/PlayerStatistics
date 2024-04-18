@@ -2,8 +2,9 @@ package io.github.kr8gz.playerstatistics.command
 
 import io.github.kr8gz.playerstatistics.database.Database
 import io.github.kr8gz.playerstatistics.database.Database.Leaderboard
-import io.github.kr8gz.playerstatistics.extensions.MutableText.plus
 import io.github.kr8gz.playerstatistics.extensions.ServerCommandSource.sendFeedback
+import io.github.kr8gz.playerstatistics.extensions.Text.newLine
+import io.github.kr8gz.playerstatistics.extensions.Text.space
 import io.github.kr8gz.playerstatistics.messages.*
 import net.minecraft.server.command.ServerCommandSource
 import net.minecraft.stat.Stat
@@ -26,7 +27,7 @@ suspend fun ServerCommandSource.sendLeaderboard(stat: Stat<*>, page: Int = 1) {
     }
     sendFeedback {
         val shareCode = storeShareData(label, content)
-        content.copy() + "\n" + Components.pageFooter(page, leaderboard.pageCount, shareCode)
+        content newLine Components.pageFooter(page, leaderboard.pageCount, shareCode)
     }
     registerPageAction(max = leaderboard.pageCount) { sendLeaderboard(stat, it) }
 }
@@ -41,7 +42,7 @@ suspend fun ServerCommandSource.sendServerTotal(stat: Stat<*>) {
         text(stat.formatValue(total))
         player?.let { player ->
             Leaderboard.Entry.of(stat, player.gameProfile.name)?.takeIf { it.value > 0 }?.let { (_, _, value) ->
-                text("\n")
+                newLine()
                 text(Text.translatable("playerstatistics.command.total.contributed",
                     player.displayName,
                     stat.formatValue(value),
@@ -52,7 +53,7 @@ suspend fun ServerCommandSource.sendServerTotal(stat: Stat<*>) {
     }
     sendFeedback {
         val shareCode = storeShareData(label, content)
-        content.copy() + " " + Components.shareButton(shareCode)
+        content space Components.shareButton(shareCode)
     }
 }
 
@@ -62,22 +63,21 @@ suspend fun ServerCommandSource.sendPlayerStat(stat: Stat<*>, playerName: String
 
         val label = Text.translatable("playerstatistics.command.player", player, statText)
         val content = literalText("$player: ") {
-            text(stat.formatValue(value))
-            text(" ")
-            text(statText)
+            text(stat.formatValue(value) space statText)
             if (rank > 0) {
-                text(" ") {
+                text(" ")
+                text(literalText {
                     text("(")
                     text(Text.translatable("playerstatistics.command.player.rank", rank))
                     text(")")
                     hoverEvent = HoverEvent(HoverEvent.Action.SHOW_TEXT, Text.translatable("playerstatistics.command.leaderboard.hint"))
                     clickEvent = ClickEvent(ClickEvent.Action.SUGGEST_COMMAND, "/stats leaderboard ${stat.asCommandArguments()}")
-                }
+                })
             }
         }
         sendFeedback {
             val shareCode = storeShareData(label, content)
-            content.copy() + " " + Components.shareButton(shareCode)
+            content space Components.shareButton(shareCode)
         }
     } ?: sendError(Text.translatable("playerstatistics.argument.player.unknown", playerName))
 }
@@ -89,19 +89,18 @@ suspend fun ServerCommandSource.sendPlayerTopStats(playerName: String, page: Int
             text(label)
             leaderboard.pageEntries.forEach { (rank, stat, value) ->
                 text("\n» ") { color = Colors.DARK_GRAY }
-                text(Text.translatable("playerstatistics.command.player.rank", rank)) {
-                    text(" ")
+                text(Text.translatable("playerstatistics.command.player.rank", rank) space literalText {
                     text(stat.formatName())
                     hoverEvent = HoverEvent(HoverEvent.Action.SHOW_TEXT, Text.translatable("playerstatistics.command.leaderboard.hint"))
                     clickEvent = ClickEvent(ClickEvent.Action.SUGGEST_COMMAND, "/stats leaderboard ${stat.asCommandArguments()}")
-                }
+                })
                 text(" - ")
                 text(stat.formatValue(value))
             }
         }
         sendFeedback {
             val shareCode = storeShareData(label, content)
-            content.copy() + "\n" + Components.pageFooter(page, leaderboard.pageCount, shareCode)
+            content newLine Components.pageFooter(page, leaderboard.pageCount, shareCode)
         }
         registerPageAction(max = leaderboard.pageCount) { sendPlayerTopStats(playerName, it) }
     } ?: sendError(Text.translatable("playerstatistics.argument.player.unknown", playerName))

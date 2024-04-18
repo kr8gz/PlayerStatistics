@@ -1,5 +1,5 @@
 plugins {
-    id 'fabric-loom' version '1.5-SNAPSHOT'
+    id 'fabric-loom' version '1.6-SNAPSHOT'
     id 'maven-publish'
     id 'org.jetbrains.kotlin.jvm' version '2.0.0-Beta4'
 }
@@ -47,7 +47,7 @@ dependencies {
     modImplementation "maven.modrinth:sqlite-jdbc:${project.sqlite_jdbc_version}"
 
     // Permissions
-    include modImplementation('me.lucko:fabric-permissions-api:0.3-SNAPSHOT')
+    include modImplementation('me.lucko:fabric-permissions-api:0.3.1')
 
     // Translations
     include modImplementation('xyz.nucleoid:server-translations-api:2.2.0+1.20.3-rc1')
