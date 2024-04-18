@@ -6,6 +6,7 @@ import net.minecraft.server.command.ServerCommandSource
 import net.minecraft.text.HoverEvent
 import net.minecraft.text.Text
 import net.minecraft.text.Texts
+import net.silkmc.silk.core.text.broadcastText
 import java.util.*
 import java.util.concurrent.ConcurrentHashMap
 
@@ -41,5 +42,5 @@ fun ServerCommandSource.shareStoredData(code: UUID? = null) {
         it.withHoverEvent(HoverEvent(HoverEvent.Action.SHOW_TEXT, data.content))
     }
     val message = Text.translatable("playerstatistics.command.share.message", entity?.displayName ?: name, data.label)
-    server.playerManager.broadcast(message space hoverText, false)
+    server.broadcastText { message space hoverText }
 }

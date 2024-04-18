@@ -45,7 +45,7 @@ object Database : CoroutineScope {
             .resolve("${PlayerStatistics.MOD_NAME}.db").toFile()
             .let { "jdbc:sqlite:$it?foreign_keys=on" }
 
-        Schema.createAll(Players, Statistics, Leaderboard.RankedStatistics)
+        Schema.createAll(Players, Statistics, Leaderboard)
 
         val existingEntries = prepareStatement("SELECT 1 FROM $Statistics LIMIT 1").executeQuery().next()
         connection.autoCommit = false
