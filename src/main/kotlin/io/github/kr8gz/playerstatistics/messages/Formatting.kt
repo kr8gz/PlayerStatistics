@@ -52,7 +52,7 @@ fun Stat<*>.formatValue(value: Long): Text = when (formatter) {
             else -> value.withUnit("cm")
         }) {
             val hoverText = Text.translatable("playerstatistics.format.blocks", formatNumber(meters))
-            hoverEvent = HoverEvent(HoverEvent.Action.SHOW_TEXT, hoverText) // FIXME why do these not appear
+            hoverEvent = HoverEvent(HoverEvent.Action.SHOW_TEXT, hoverText)
         }
     }
     StatFormatter.TIME -> {

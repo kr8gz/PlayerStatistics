@@ -42,5 +42,5 @@ fun ServerCommandSource.shareStoredData(code: UUID? = null) {
         it.withHoverEvent(HoverEvent(HoverEvent.Action.SHOW_TEXT, data.content))
     }
     val message = Text.translatable("playerstatistics.command.share.message", entity?.displayName ?: name, data.label)
-    server.broadcastText { message space hoverText }
+    server.broadcastText { text(message space hoverText) }
 }
