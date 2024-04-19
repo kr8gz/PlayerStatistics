@@ -46,13 +46,10 @@ class Leaderboard<T>(val pageEntries: List<Entry<T>>, val pageCount: Int) {
         private const val pageSize = 8
 
         private inline fun <T> ResultSet.generateLeaderboard(crossinline entryBuilder: ResultSet.() -> Entry<T>?): Leaderboard<T> {
-            var pages: Int? = null
             val entries = mutableListOf<Entry<T>>()
-            while (next()) {
-                if (pages == null) pages = getInt(pageCount)
-                entryBuilder()?.let(entries::add)
-            }
-            return Leaderboard(entries, pages.takeIf { entries.isNotEmpty() } ?: 0)
+            val pages = getInt(pageCount)
+            while (next()) entryBuilder()?.let(entries::add)
+            return Leaderboard(entries, pages)
         }
 
         /** @return key = player name */
@@ -80,10 +77,8 @@ class Leaderboard<T>(val pageEntries: List<Entry<T>>, val pageCount: Int) {
                 setString(1, stat.name)
                 setString(2, highlightName)
                 executeQuery()
-            }.use { rs ->
-                rs.generateLeaderboard {
-                    Entry(getInt(rank), getString(Players.name), getInt(Statistics.value))
-                }
+            }.generateLeaderboard {
+                Entry(getInt(rank), getString(Players.name), getInt(Statistics.value))
             }
         }
 
@@ -106,14 +101,12 @@ class Leaderboard<T>(val pageEntries: List<Entry<T>>, val pageCount: Int) {
             """).run {
                 setString(1, name)
                 executeQuery()
-            }.use { rs ->
-                rs.generateLeaderboard {
-                    getString(Statistics.stat).split(':').map { Identifier.splitOn(it, '.') }.let { (statTypeId, statId) ->
-                        fun <T> StatType<T>.getStat(id: Identifier) = registry[id]?.let(::getOrCreateStat)
-                        Registries.STAT_TYPE[statTypeId]?.getStat(statId)
-                    }?.let { stat ->
-                        Entry(getInt(rank), stat, getInt(Statistics.value))
-                    }
+            }.generateLeaderboard {
+                getString(Statistics.stat).split(':').map { Identifier.splitOn(it, '.') }.let { (statTypeId, statId) ->
+                    fun <T> StatType<T>.getStat(id: Identifier) = registry[id]?.let(::getOrCreateStat)
+                    Registries.STAT_TYPE[statTypeId]?.getStat(statId)
+                }?.let { stat ->
+                    Entry(getInt(rank), stat, getInt(Statistics.value))
                 }
             }
         }
