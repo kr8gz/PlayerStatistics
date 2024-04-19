@@ -19,6 +19,12 @@ import java.text.DecimalFormatSymbols
 private val decimalFormatter = DecimalFormat(",###.##", DecimalFormatSymbols())
 fun formatNumber(value: Number): String = decimalFormatter.format(value)
 
+private fun formatWithUnit(vararg units: Pair<Number, String>): String {
+    val sortedUnits = units.map { (value, unit) -> value.toDouble() to unit }.sortedBy { it.first }
+    val (value, unit) = sortedUnits.find { it.first > 0.5 } ?: sortedUnits.last()
+    return "${formatNumber(value)} $unit"
+}
+
 fun Stat<*>.formatName(): Text {
     fun formatWithStatType(statText: Text): Text {
         return Text.translatable("playerstatistics.stat_type.${type.identifier.toTranslationKey()}", statText)
@@ -38,19 +44,13 @@ fun Stat<*>.formatName(): Text {
     }
 }
 
-private fun Number.withUnit(unit: String) = "${formatNumber(this)} $unit"
-
 fun Stat<*>.formatValue(value: Int) = formatValue(value.toLong())
 fun Stat<*>.formatValue(value: Long): Text = when (formatter) {
     StatFormatter.DISTANCE -> {
         val meters = value / 100.0
         val kilometers = meters / 1000.0
 
-        literalText(when {
-            kilometers > 0.5 -> kilometers.withUnit("km")
-            meters > 0.5 -> meters.withUnit("m")
-            else -> value.withUnit("cm")
-        }) {
+        literalText(formatWithUnit(kilometers to "km", meters to "m", value to "cm")) {
             val hoverText = Text.translatable("playerstatistics.format.blocks", formatNumber(meters))
             hoverEvent = HoverEvent(HoverEvent.Action.SHOW_TEXT, hoverText)
         }
@@ -62,13 +62,7 @@ fun Stat<*>.formatValue(value: Long): Text = when (formatter) {
         val days = hours / 24.0
         val years = days / 365.0
 
-        literalText(when {
-            years > 0.5 -> years.withUnit("y")
-            days > 0.5 -> days.withUnit("d")
-            hours > 0.5 -> hours.withUnit("h")
-            minutes > 0.5 -> minutes.withUnit("m")
-            else -> seconds.withUnit("s")
-        }) {
+        literalText(formatWithUnit(years to "y", days to "d", hours to "h", minutes to "m", seconds to "s")) {
             val hoverText = Text.translatable("playerstatistics.format.ticks", formatNumber(value))
             hoverEvent = HoverEvent(HoverEvent.Action.SHOW_TEXT, hoverText)
         }
