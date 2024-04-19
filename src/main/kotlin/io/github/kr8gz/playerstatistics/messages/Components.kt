@@ -1,5 +1,7 @@
 package io.github.kr8gz.playerstatistics.messages
 
+import io.github.kr8gz.playerstatistics.command.PageCommand
+import io.github.kr8gz.playerstatistics.command.ShareCommand
 import io.github.kr8gz.playerstatistics.extensions.Text.space
 import net.minecraft.text.*
 import net.silkmc.silk.core.text.literalText
@@ -9,7 +11,7 @@ object Components {
     fun shareButton(code: UUID) = literalText {
         text(Texts.bracketed(Text.translatable("playerstatistics.command.share"))) {
             hoverEvent = HoverEvent(HoverEvent.Action.SHOW_TEXT, Text.translatable("playerstatistics.command.share.hint"))
-            clickEvent = ClickEvent(ClickEvent.Action.RUN_COMMAND, "/stats share $code")
+            clickEvent = ClickEvent(ClickEvent.Action.RUN_COMMAND, ShareCommand.format(code))
         }
     }
 
@@ -20,7 +22,7 @@ object Components {
             if (active) {
                 color = Colors.WHITE
                 hoverEvent = HoverEvent(HoverEvent.Action.SHOW_TEXT, Text.translatable(translationKey))
-                clickEvent = ClickEvent(ClickEvent.Action.RUN_COMMAND, "/stats page $newPage")
+                clickEvent = ClickEvent(ClickEvent.Action.RUN_COMMAND, PageCommand.format(newPage))
             } else {
                 color = Colors.GRAY
             }

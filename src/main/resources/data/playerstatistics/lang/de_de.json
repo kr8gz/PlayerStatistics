@@ -7,7 +7,7 @@
   "playerstatistics.command.page.next": "Nächste Seite",
   "playerstatistics.command.page.no_data": "Für diese Seite wurden keine Daten gefunden",
   "playerstatistics.command.page.previous": "Vorige Seite",
-  "playerstatistics.command.page.unavailable": "Keine Seiten für das letzte Ergebnis verfügbar",
+  "playerstatistics.command.page.unavailable": "Keine Seiten verfügbar",
   "playerstatistics.command.player": "%2$s von %1$s",
   "playerstatistics.command.player.rank": "Rang #%s",
   "playerstatistics.command.share": "Teilen",

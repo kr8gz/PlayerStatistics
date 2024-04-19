@@ -12,21 +12,19 @@ private typealias PageAction = suspend ServerCommandSource.(page: Int) -> Unit
 
 object PageCommand : StatsCommand("page") {
     override fun LiteralCommandBuilder<ServerCommandSource>.build() {
-        argument(Arguments.PAGE, IntegerArgumentType.integer(1)) { page ->
+        argument("page", IntegerArgumentType.integer(1)) { page ->
             executes {
                 usingDatabase { source.runPageAction(page()) }
             }
         }
     }
 
-    private val pageActions = ConcurrentHashMap<UUID, PageAction?>()
+    private val pageActions = ConcurrentHashMap<UUID, PageAction>()
 
-    fun ServerCommandSource.registerPageAction(max: Int, action: PageAction?) {
-        pageActions[uuid] = action?.let {
-            { page ->
-                if (page <= max) action(page)
-                else sendError(Text.translatable("playerstatistics.command.page.no_data"))
-            }
+    fun ServerCommandSource.registerPageAction(max: Int, action: PageAction) {
+        pageActions[uuid] = { page ->
+            if (page <= max) action(page)
+            else sendError(Text.translatable("playerstatistics.command.page.no_data"))
         }
     }
 

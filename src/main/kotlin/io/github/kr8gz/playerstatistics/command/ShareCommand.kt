@@ -18,7 +18,7 @@ object ShareCommand : StatsCommand("share") {
     override fun LiteralCommandBuilder<ServerCommandSource>.build() {
         requires { Permissions.check(it, PlayerStatistics.Permissions.SHARE, true) }
         executes { source.shareStoredData() }
-        argument<UUID>(Arguments.CODE) { code ->
+        argument<UUID>("code") { code ->
             executes { source.shareStoredData(code()) }
         }
     }

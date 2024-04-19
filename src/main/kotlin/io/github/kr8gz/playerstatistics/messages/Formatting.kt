@@ -80,6 +80,6 @@ fun Stat<*>.formatValue(value: Long): Text = when (formatter) {
 }
 
 fun <T> Stat<T>.asCommandArguments(): String {
-    val statId = type.registry.getKey(value).get().value
-    return if (type == Stats.CUSTOM) statId.toShortString() else "${type.identifier.path} $statId"
+    val identifier = type.registry.getKey(value).get().value
+    return if (type == Stats.CUSTOM) identifier.toShortString() else "${type.identifier.path} $identifier"
 }

@@ -51,13 +51,6 @@ abstract class StatsCommand(private val name: String) {
 
     abstract fun LiteralCommandBuilder<ServerCommandSource>.build()
 
-    protected object Arguments {
-        const val STAT = "stat"
-        const val PLAYER = "player"
-        const val PAGE = "page"
-        const val CODE = "code"
-    }
-
     protected enum class Exceptions(translationKey: String) {
         // Database
         DATABASE_INITIALIZING("playerstatistics.database.initializing"),
@@ -91,7 +84,7 @@ abstract class StatsCommand(private val name: String) {
             val argumentType = { registryAccess: CommandRegistryAccess ->
                 RegistryEntryArgumentType.registryEntry(registryAccess, statType.registry.key)
             }
-            argument(Arguments.STAT, argumentType) { stat ->
+            argument("stat", argumentType) { stat ->
                 if (shortIds) suggests {
                     statType.registry.ids.map { it.toShortString() }
                 }
@@ -120,14 +113,14 @@ abstract class StatsCommand(private val name: String) {
     }
 
     protected inline fun CommandBuilder.playerArgument(optional: Boolean = false, builder: ArgumentBuilder<String>) {
-        argument<String>(Arguments.PLAYER) { player ->
+        argument<String>("player") { player ->
             suggests { Players.nameList }
             builder(player)
         }
         if (optional) builder { source.playerOrThrow.gameProfile.name }
     }
 
-    fun format(vararg args: String) = buildString {
+    fun format(vararg args: Any) = buildString {
         append("/${Root.name} $name")
         args.forEach { append(" "); append(it) }
     }
