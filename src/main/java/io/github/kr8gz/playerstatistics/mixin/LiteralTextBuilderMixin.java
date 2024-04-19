@@ -11,7 +11,7 @@ import org.spongepowered.asm.mixin.injection.Redirect;
 public abstract class LiteralTextBuilderMixin {
     @Redirect(method = "build",
               at = @At(value = "INVOKE", target = "Lnet/minecraft/text/MutableText;setStyle(Lnet/minecraft/text/Style;)Lnet/minecraft/text/MutableText;"))
-    private MutableText fixStyle(MutableText instance, Style currentStyle) {
-        return instance.styled(style -> style.withParent(currentStyle));
+    private MutableText fixStyle(MutableText text, Style currentStyle) {
+        return text.styled(style -> style.withParent(currentStyle));
     }
 }

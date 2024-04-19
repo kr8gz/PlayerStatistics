@@ -1,18 +1,14 @@
 package io.github.kr8gz.playerstatistics.command
 
-import com.mojang.brigadier.arguments.IntegerArgumentType
 import com.mojang.brigadier.context.CommandContext
 import com.mojang.brigadier.exceptions.CommandSyntaxException
 import com.mojang.brigadier.exceptions.SimpleCommandExceptionType
-import io.github.kr8gz.playerstatistics.PlayerStatistics
 import io.github.kr8gz.playerstatistics.database.Database
 import io.github.kr8gz.playerstatistics.database.Players
 import io.github.kr8gz.playerstatistics.database.Statistics
 import io.github.kr8gz.playerstatistics.extensions.Identifier.toShortString
 import io.github.kr8gz.playerstatistics.extensions.ServerCommandSource.uuid
-import me.lucko.fabric.api.permissions.v0.Permissions
 import net.minecraft.command.CommandRegistryAccess
-import net.minecraft.command.CommandSource
 import net.minecraft.command.argument.RegistryEntryArgumentType
 import net.minecraft.registry.Registries
 import net.minecraft.resource.featuretoggle.ToggleableFeature
@@ -21,26 +17,48 @@ import net.minecraft.stat.Stat
 import net.minecraft.stat.StatType
 import net.minecraft.stat.Stats
 import net.minecraft.text.Text
-import net.silkmc.silk.commands.ArgumentCommandBuilder
-import net.silkmc.silk.commands.CommandBuilder
+import net.silkmc.silk.commands.ArgumentResolver
+import net.silkmc.silk.commands.LiteralCommandBuilder
 import net.silkmc.silk.commands.command
 import java.util.*
 import java.util.concurrent.ConcurrentHashMap
 
-typealias ServerCommandContext = CommandContext<ServerCommandSource>
+private typealias CommandBuilder = net.silkmc.silk.commands.CommandBuilder<ServerCommandSource, *, *>
+private typealias ArgumentBuilder<T> = CommandBuilder.(ArgumentResolver<ServerCommandSource, T>) -> Unit
 
-typealias CommandNodeBuilder = CommandBuilder<ServerCommandSource, *, *>
-typealias ArgumentBuilder<T> = CommandNodeBuilder.(ServerCommandContext.() -> T) -> Unit
+abstract class StatsCommand(private val name: String) {
+    companion object Root {
+        private const val name = "stats"
+        private val subcommands = listOf(
+            LeaderboardCommand,
+            ServerTotalCommand,
+            PlayerStatCommand,
+            PlayerTopStatsCommand,
+            PageCommand,
+            ShareCommand,
+        )
 
-object StatsCommand {
-    private object Arguments {
+        init {
+            command(Root.name) {
+                subcommands.forEach {
+                    it.run {
+                        literal(name) { build() }
+                    }
+                }
+            }
+        }
+    }
+
+    abstract fun LiteralCommandBuilder<ServerCommandSource>.build()
+
+    protected object Arguments {
         const val STAT = "stat"
         const val PLAYER = "player"
         const val PAGE = "page"
         const val CODE = "code"
     }
 
-    enum class Exceptions(translationKey: String) {
+    protected enum class Exceptions(translationKey: String) {
         // Database
         DATABASE_INITIALIZING("playerstatistics.database.initializing"),
         ALREADY_RUNNING("playerstatistics.database.running"),
@@ -55,7 +73,7 @@ object StatsCommand {
 
     private val databaseUsers = ConcurrentHashMap.newKeySet<UUID>()
 
-    private inline fun ServerCommandContext.usingDatabase(crossinline command: suspend () -> Unit) {
+    protected fun CommandContext<ServerCommandSource>.usingDatabase(command: suspend () -> Unit) {
         if (Database.isInitializing) throw Exceptions.DATABASE_INITIALIZING.create()
         if (!databaseUsers.add(source.uuid)) throw Exceptions.ALREADY_RUNNING.create()
 
@@ -68,8 +86,8 @@ object StatsCommand {
         }
     }
 
-    private fun CommandNodeBuilder.statArgument(builder: ArgumentBuilder<Stat<*>>) {
-        fun <T> CommandNodeBuilder.addArgumentsForStatType(statType: StatType<T>, shortIds: Boolean = false) {
+    protected fun CommandBuilder.statArgument(builder: ArgumentBuilder<Stat<*>>) {
+        fun <T> CommandBuilder.addArgumentsForStatType(statType: StatType<T>, shortIds: Boolean = false) {
             val argumentType = { registryAccess: CommandRegistryAccess ->
                 RegistryEntryArgumentType.registryEntry(registryAccess, statType.registry.key)
             }
@@ -101,7 +119,7 @@ object StatsCommand {
         }
     }
 
-    private inline fun CommandNodeBuilder.playerArgument(optional: Boolean = false, builder: ArgumentBuilder<String>) {
+    protected inline fun CommandBuilder.playerArgument(optional: Boolean = false, builder: ArgumentBuilder<String>) {
         argument<String>(Arguments.PLAYER) { player ->
             suggests { Players.nameList }
             builder(player)
@@ -109,72 +127,8 @@ object StatsCommand {
         if (optional) builder { source.playerOrThrow.gameProfile.name }
     }
 
-    private inline fun CommandNodeBuilder.executes(crossinline command: ServerCommandContext.() -> Unit) {
-        brigadier {
-            executes { it.command(); 0 }
-        }
-    }
-
-    private inline fun ArgumentCommandBuilder<*, *>.suggests(crossinline values: CommandContext<*>.() -> Iterable<String>) {
-        brigadier {
-            suggests { context, builder ->
-                CommandSource.suggestMatching(values(context), builder)
-            }
-        }
-    }
-
-    init {
-        command("stats") {
-            literal("leaderboard") {
-                statArgument { stat ->
-                    executes {
-                        usingDatabase { source.sendLeaderboard(stat()) }
-                    }
-                }
-            }
-
-            literal("total") {
-                statArgument { stat ->
-                    executes {
-                        usingDatabase { source.sendServerTotal(stat()) }
-                    }
-                }
-            }
-
-            literal("player") {
-                playerArgument { player ->
-                    statArgument { stat ->
-                        executes {
-                            usingDatabase { source.sendPlayerStat(stat(), player()) }
-                        }
-                    }
-                }
-            }
-
-            literal("top") {
-                playerArgument(optional = true) {
-                    executes {
-                        val player = it() // don't throw in coroutine
-                        usingDatabase { source.sendPlayerTopStats(player) }
-                    }
-                }
-            }
-
-            literal("page") {
-                argument(Arguments.PAGE, IntegerArgumentType.integer(1)) { page ->
-                    executes {
-                        usingDatabase { source.runPageAction(page()) }
-                    }
-                }
-            }
-
-            literal("share") {
-                requires { Permissions.check(it, PlayerStatistics.Permissions.SHARE, true) }
-                executes { source.shareStoredData() }
-                argument<UUID>(Arguments.CODE) { code ->
-                    executes { source.shareStoredData(code()) }
-                }
-            }
-        }
+    fun format(vararg args: String) = buildString {
+        append("/${Root.name} $name")
+        args.forEach { append(" "); append(it) }
     }
 }
