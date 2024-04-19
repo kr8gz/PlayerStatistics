@@ -15,8 +15,8 @@ import java.sql.Statement
 import kotlin.streams.asSequence
 import kotlin.time.Duration.Companion.seconds
 
-object Database : CoroutineScope {
-    override val coroutineContext = Dispatchers.IO
+object Database {
+    private val coroutineScope = CoroutineScope(Dispatchers.IO)
 
     private lateinit var DATABASE_URL: String
 
@@ -29,7 +29,7 @@ object Database : CoroutineScope {
         }
     }
 
-    fun transaction(block: suspend Database.() -> Unit) = launch {
+    fun transaction(block: suspend Database.() -> Unit) = coroutineScope.launch {
         Database.block()
         connection.commit()
     }
@@ -47,10 +47,10 @@ object Database : CoroutineScope {
 
         Schema.createAll(Players, Statistics, Leaderboard)
 
-        val existingEntries = prepareStatement("SELECT 1 FROM $Statistics LIMIT 1").executeQuery().next()
+        val hasExistingEntries = prepareStatement("SELECT 1 FROM $Statistics LIMIT 1").executeQuery().next()
         connection.autoCommit = false
 
-        if (existingEntries) return
+        if (hasExistingEntries) return // skip populating tables
 
         fun streamStatsFiles() = Files.list(server.getSavePath(WorldSavePath.STATS))
 
@@ -72,10 +72,10 @@ object Database : CoroutineScope {
             }
         }
 
-        launch {
+        coroutineScope.launch {
             while (isInitializing) {
                 PlayerStatistics.LOGGER.info("Initializing database ($completed/$fileCount players)")
-                delay(10.seconds)
+                delay(5.seconds)
             }
         }
     }
@@ -93,7 +93,7 @@ object Database : CoroutineScope {
     }
 
     abstract class Table(private val name: String) : Schema {
-        override fun toString() = name
+        final override fun toString() = name
 
         protected abstract val schema: List<String>
 
@@ -103,7 +103,7 @@ object Database : CoroutineScope {
     }
 
     abstract class View(private val name: String) : Schema {
-        override fun toString() = name
+        final override fun toString() = name
 
         protected abstract val definition: String
 

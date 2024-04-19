@@ -1,6 +1,6 @@
 package io.github.kr8gz.playerstatistics.database
 
-import io.github.kr8gz.playerstatistics.access.ServerStatHandlerMixinAccess
+import io.github.kr8gz.playerstatistics.extensions.ServerStatHandler.takeChangedStats
 import io.github.kr8gz.playerstatistics.extensions.ServerStatHandler.uuid
 import kotlinx.coroutines.coroutineScope
 import net.minecraft.stat.ServerStatHandler
@@ -19,10 +19,7 @@ object Statistics : Database.Table("statistics") {
     )
 
     suspend fun updateStats(statHandler: ServerStatHandler, changedOnly: Boolean = true): Unit = coroutineScope {
-        val statMap = when {
-            changedOnly -> (statHandler as ServerStatHandlerMixinAccess).takeChangedStats()
-            else -> statHandler.statMap
-        }
+        val statMap = with(statHandler) { if (changedOnly) takeChangedStats() else statMap }
         if (statMap.isNotEmpty()) {
             Database.prepareStatement("REPLACE INTO $Statistics ($player, $stat, $value) VALUES (?, ?, ?)").run {
                 setString(1, statHandler.uuid.toString())
