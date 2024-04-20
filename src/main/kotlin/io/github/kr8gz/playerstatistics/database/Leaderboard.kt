@@ -47,9 +47,12 @@ class Leaderboard<T>(val pageEntries: List<Entry<T>>, val pageCount: Int) {
 
         private inline fun <T> ResultSet.generateLeaderboard(crossinline entryBuilder: ResultSet.() -> Entry<T>?): Leaderboard<T> {
             val entries = mutableListOf<Entry<T>>()
-            val pages = getInt(pageCount)
-            while (next()) entryBuilder()?.let(entries::add)
-            return Leaderboard(entries, pages)
+            var pages: Int? = null
+            if (next()) {
+                pages = getInt(pageCount)
+                do entryBuilder()?.let(entries::add) while (next())
+            }
+            return Leaderboard(entries, pages ?: 0)
         }
 
         /** @return key = player name */

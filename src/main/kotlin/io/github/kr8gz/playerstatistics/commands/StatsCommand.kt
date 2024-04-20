@@ -74,8 +74,7 @@ abstract class StatsCommand(private val name: String) {
             source.server.playerManager.playerList.forEach {
                 Statistics.updateStats(it.statHandler)
             }
-            command()
-            databaseUsers.remove(source.uuid)
+            try { command() } finally { databaseUsers.remove(source.uuid) }
         }
     }
 
