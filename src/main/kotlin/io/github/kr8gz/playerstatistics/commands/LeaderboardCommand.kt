@@ -12,15 +12,17 @@ import io.github.kr8gz.playerstatistics.messages.Components
 import io.github.kr8gz.playerstatistics.messages.StatFormatter
 import net.minecraft.server.command.ServerCommandSource
 import net.minecraft.stat.Stat
+import net.minecraft.text.ClickEvent
+import net.minecraft.text.HoverEvent
 import net.minecraft.text.Text
 import net.silkmc.silk.commands.LiteralCommandBuilder
 
 object LeaderboardCommand : StatsCommand("leaderboard") {
     override fun LiteralCommandBuilder<ServerCommandSource>.build() {
         statArgument { stat ->
-            playerArgument(optional = true) {
+            optionalPlayerArgument {
                 executes {
-                    val player = it()
+                    val player = it() ?: throw ServerCommandSource.REQUIRES_PLAYER_EXCEPTION.create()
                     usingDatabase { source.sendLeaderboard(stat(), player) }
                 }
             }
@@ -66,5 +68,10 @@ object LeaderboardCommand : StatsCommand("leaderboard") {
             }
         }
         registerPageAction(max = leaderboard.pageCount) { sendLeaderboard(stat, highlightName, it) }
+    }
+
+    fun formatStatNameWithSuggestion(statFormatter: StatFormatter<*>) = statFormatter.name.build {
+        hoverEvent = HoverEvent(HoverEvent.Action.SHOW_TEXT, Text.translatable("playerstatistics.command.leaderboard.hint"))
+        clickEvent = ClickEvent(ClickEvent.Action.SUGGEST_COMMAND, formatCommand(statFormatter.commandArguments))
     }
 }

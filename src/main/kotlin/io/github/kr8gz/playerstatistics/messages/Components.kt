@@ -11,7 +11,7 @@ import java.util.UUID
 object Components {
     fun shareButton(code: UUID) = Texts.bracketed(Text.translatable("playerstatistics.command.share")).build {
         hoverEvent = HoverEvent(HoverEvent.Action.SHOW_TEXT, Text.translatable("playerstatistics.command.share.hint"))
-        clickEvent = ClickEvent(ClickEvent.Action.RUN_COMMAND, ShareCommand.format(code))
+        clickEvent = ClickEvent(ClickEvent.Action.RUN_COMMAND, ShareCommand.formatCommand(code))
         color = Colors.GREEN
     }
 
@@ -22,7 +22,7 @@ object Components {
             if (active) {
                 color = Colors.WHITE
                 hoverEvent = HoverEvent(HoverEvent.Action.SHOW_TEXT, Text.translatable(translationKey))
-                clickEvent = ClickEvent(ClickEvent.Action.RUN_COMMAND, PageCommand.format(newPage))
+                clickEvent = ClickEvent(ClickEvent.Action.RUN_COMMAND, PageCommand.formatCommand(newPage))
             } else {
                 color = Colors.GRAY
             }

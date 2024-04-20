@@ -14,7 +14,7 @@
   "playerstatistics.command.top": "%s's Top Statistics",
   "playerstatistics.command.top.rank": "Rank #%s",
   "playerstatistics.command.total": "Server-wide total %s",
-  "playerstatistics.command.total.contributed": "%s contributed %s (%s%%)",
+  "playerstatistics.command.total.contributed": "%s contributed %s",
   "playerstatistics.database.initializing": "Database is currently initializing, please wait",
   "playerstatistics.database.running": "You are already running a query, please wait",
   "playerstatistics.no_data": "No data found",

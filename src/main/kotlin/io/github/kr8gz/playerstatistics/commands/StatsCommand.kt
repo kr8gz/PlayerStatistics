@@ -112,16 +112,15 @@ abstract class StatsCommand(private val name: String) {
         }
     }
 
-    /** throws if optional and run without specifying a player */
-    protected inline fun CommandBuilder.playerArgument(optional: Boolean = false, builder: ArgumentBuilder<String>) {
+    protected inline fun CommandBuilder.optionalPlayerArgument(builder: ArgumentBuilder<String?>) {
         argument<String>("player") { player ->
             suggests { Players.nameList }
             builder(player)
         }
-        if (optional) builder { source.playerOrThrow.gameProfile.name }
+        builder { source.player?.gameProfile?.name }
     }
 
-    fun format(vararg args: Any) = buildString {
+    fun formatCommand(vararg args: Any) = buildString {
         append("/${Root.name} $name")
         args.forEach { append(" $it") }
     }

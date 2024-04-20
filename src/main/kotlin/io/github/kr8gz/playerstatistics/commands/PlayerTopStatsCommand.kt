@@ -5,23 +5,20 @@ import io.github.kr8gz.playerstatistics.commands.ShareCommand.storeShareData
 import io.github.kr8gz.playerstatistics.database.Leaderboard
 import io.github.kr8gz.playerstatistics.database.Players
 import io.github.kr8gz.playerstatistics.extensions.ServerCommandSource.sendFeedback
-import io.github.kr8gz.playerstatistics.extensions.Text.build
 import io.github.kr8gz.playerstatistics.extensions.Text.newLine
-import io.github.kr8gz.playerstatistics.extensions.Text.space
 import io.github.kr8gz.playerstatistics.messages.Colors
 import io.github.kr8gz.playerstatistics.messages.Components
 import io.github.kr8gz.playerstatistics.messages.StatFormatter
 import net.minecraft.server.command.ServerCommandSource
-import net.minecraft.text.ClickEvent
-import net.minecraft.text.HoverEvent
 import net.minecraft.text.Text
 import net.silkmc.silk.commands.LiteralCommandBuilder
+import net.silkmc.silk.core.text.literalText
 
 object PlayerTopStatsCommand : StatsCommand("top") {
     override fun LiteralCommandBuilder<ServerCommandSource>.build() {
-        playerArgument(optional = true) {
+        optionalPlayerArgument {
             executes {
-                val player = it()
+                val player = it() ?: throw ServerCommandSource.REQUIRES_PLAYER_EXCEPTION.create()
                 usingDatabase { source.sendPlayerTopStats(player) }
             }
         }
@@ -31,16 +28,20 @@ object PlayerTopStatsCommand : StatsCommand("top") {
         val leaderboard = Leaderboard.forPlayer(playerName, page).takeIf { it.pageCount > 0 }
             ?: return sendError(Exceptions.UNKNOWN_PLAYER.getMessage(playerName))
 
-        val label = Text.translatable("playerstatistics.command.top", Players.fixName(playerName))
-        val content = label.build {
+        val label = run {
+            val player = Players.fixName(playerName) ?: playerName
+            Text.translatable("playerstatistics.command.top", player).withColor(Colors.WHITE)
+        }
+        val content = literalText {
+            text(label.copy()) { bold = true }
             leaderboard.pageEntries.forEach { (rank, stat, value) ->
                 val statFormatter = StatFormatter(stat)
-                text("\n » ") { color = Colors.DARK_GRAY }
-                text(Text.translatable("playerstatistics.command.top.rank", rank) space statFormatter.name.build {
-                    hoverEvent = HoverEvent(HoverEvent.Action.SHOW_TEXT, Text.translatable("playerstatistics.command.leaderboard.hint"))
-                    clickEvent = ClickEvent(ClickEvent.Action.SUGGEST_COMMAND, LeaderboardCommand.format(statFormatter.commandArguments))
-                })
-                text(" - "); text(statFormatter.formatValue(value))
+                color = Colors.DARK_GRAY
+
+                newLine()
+                text(" » "); text(Text.translatable("playerstatistics.command.top.rank", rank)) { color = Colors.GOLD }
+                text(" ");   text(LeaderboardCommand.formatStatNameWithSuggestion(statFormatter)) { color = Colors.YELLOW }
+                text(" - "); text(statFormatter.formatValue(value)) { color = Colors.VALUE }
             }
         }
 

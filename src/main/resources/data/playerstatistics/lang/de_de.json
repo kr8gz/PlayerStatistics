@@ -14,7 +14,7 @@
   "playerstatistics.command.top": "Top-Statistiken von %s",
   "playerstatistics.command.top.rank": "Rang #%s",
   "playerstatistics.command.total": "Serverweit insgesamt %s",
-  "playerstatistics.command.total.contributed": "%s hat %s beigetragen (%s%%)",
+  "playerstatistics.command.total.contributed": "%s hat %s beigetragen",
   "playerstatistics.database.initializing": "Datenbank wird gerade initialisiert, bitte warten",
   "playerstatistics.database.running": "Es werden bereits Daten abgefragt, bitte warten",
   "playerstatistics.no_data": "Keine Daten gefunden",
