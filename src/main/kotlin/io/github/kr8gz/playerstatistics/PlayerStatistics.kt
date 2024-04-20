@@ -15,10 +15,6 @@ object PlayerStatistics : DedicatedServerModInitializer {
 
     val LOGGER: Logger = LogManager.getLogger()
 
-    object Permissions {
-        const val SHARE = "$MOD_ID.share"
-    }
-
     override fun onInitializeServer() {
         StatsCommand
 

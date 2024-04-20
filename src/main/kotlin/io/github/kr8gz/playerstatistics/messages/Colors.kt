@@ -1,9 +1,17 @@
 package io.github.kr8gz.playerstatistics.messages
 
 object Colors {
-    const val WHITE = 0xFFFFFF
-    const val GRAY = 0xAAAAAA
-    const val DARK_GRAY = 0x555555
+    const val WHITE     = 0xFFFFFF // §f
+    const val GRAY      = 0xAAAAAA // §7
+    const val DARK_GRAY = 0x555555 // §8
 
-    const val HEART = 0xFF0000
+    const val GREEN     = 0x55FF55 // §a
+
+    const val GOLD      = 0xFFAA00 // §6
+    const val YELLOW    = 0xFFFF00 // §e
+
+    const val HEART     = 0xFF3333
+
+    const val VALUE           = 0x99BBFF
+    const val VALUE_HIGHLIGHT = 0xBBDDFF
 }

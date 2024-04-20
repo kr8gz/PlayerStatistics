@@ -46,9 +46,6 @@ dependencies {
     // Database
     modImplementation "maven.modrinth:sqlite-jdbc:${project.sqlite_jdbc_version}"
 
-    // Permissions
-    include modImplementation('me.lucko:fabric-permissions-api:0.3.1')
-
     // Translations
     include modImplementation('xyz.nucleoid:server-translations-api:2.2.0+1.20.3-rc1')
 }

@@ -2,6 +2,7 @@ package io.github.kr8gz.playerstatistics.messages
 
 import io.github.kr8gz.playerstatistics.extensions.Identifier.toShortString
 import io.github.kr8gz.playerstatistics.extensions.StatType.identifier
+import io.github.kr8gz.playerstatistics.extensions.Text.build
 import net.minecraft.block.Block
 import net.minecraft.entity.EntityType
 import net.minecraft.item.Item
@@ -20,8 +21,7 @@ class StatFormatter<T>(private val stat: Stat<T>) {
             return Text.translatable("playerstatistics.stat_type.${stat.type.identifier.toTranslationKey()}", text)
         }
 
-        fun formatItemText(item: Item) = formatWithStatType(literalText {
-            text(item.name)
+        fun formatItemText(item: Item) = formatWithStatType(item.name.build {
             hoverEvent = HoverEvent(HoverEvent.Action.SHOW_ITEM, HoverEvent.ItemStackContent(item.defaultStack))
         })
 
@@ -67,7 +67,7 @@ class StatFormatter<T>(private val stat: Stat<T>) {
 
             StatFormatter.DIVIDE_BY_TEN -> { value ->
                 literalText(formatNumber(value / 20.0)) {
-                    text(" ❤") { color = Colors.HEART }
+                    text(" ❤") { color = Colors.HEART; bold = false }
                     val hoverText = Text.translatable("playerstatistics.format.damage", formatNumber(value / 10.0))
                     hoverEvent = HoverEvent(HoverEvent.Action.SHOW_TEXT, hoverText)
                 }

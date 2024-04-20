@@ -5,6 +5,7 @@ import io.github.kr8gz.playerstatistics.commands.ShareCommand.storeShareData
 import io.github.kr8gz.playerstatistics.database.Leaderboard
 import io.github.kr8gz.playerstatistics.database.Players
 import io.github.kr8gz.playerstatistics.extensions.ServerCommandSource.sendFeedback
+import io.github.kr8gz.playerstatistics.extensions.Text.build
 import io.github.kr8gz.playerstatistics.extensions.Text.newLine
 import io.github.kr8gz.playerstatistics.extensions.Text.space
 import io.github.kr8gz.playerstatistics.messages.Colors
@@ -15,7 +16,6 @@ import net.minecraft.text.ClickEvent
 import net.minecraft.text.HoverEvent
 import net.minecraft.text.Text
 import net.silkmc.silk.commands.LiteralCommandBuilder
-import net.silkmc.silk.core.text.literalText
 
 object PlayerTopStatsCommand : StatsCommand("top") {
     override fun LiteralCommandBuilder<ServerCommandSource>.build() {
@@ -32,13 +32,11 @@ object PlayerTopStatsCommand : StatsCommand("top") {
             ?: return sendError(Text.translatable("playerstatistics.argument.player.unknown", playerName))
 
         val label = Text.translatable("playerstatistics.command.top", Players.fixName(playerName))
-        val content = literalText {
-            text(label)
+        val content = label.build {
             leaderboard.pageEntries.forEach { (rank, stat, value) ->
                 val statFormatter = StatFormatter(stat)
-                text("\n» ") { color = Colors.DARK_GRAY }
-                text(Text.translatable("playerstatistics.command.player.rank", rank) space literalText {
-                    text(statFormatter.name)
+                text("\n » ") { color = Colors.DARK_GRAY }
+                text(Text.translatable("playerstatistics.command.player.rank", rank) space statFormatter.name.build {
                     hoverEvent = HoverEvent(HoverEvent.Action.SHOW_TEXT, Text.translatable("playerstatistics.command.leaderboard.hint"))
                     clickEvent = ClickEvent(ClickEvent.Action.SUGGEST_COMMAND, LeaderboardCommand.format(statFormatter.commandArguments))
                 })

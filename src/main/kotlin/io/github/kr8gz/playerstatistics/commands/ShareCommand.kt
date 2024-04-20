@@ -1,9 +1,9 @@
 package io.github.kr8gz.playerstatistics.commands
 
-import io.github.kr8gz.playerstatistics.PlayerStatistics
 import io.github.kr8gz.playerstatistics.extensions.ServerCommandSource.uuid
+import io.github.kr8gz.playerstatistics.extensions.Text.build
 import io.github.kr8gz.playerstatistics.extensions.Text.space
-import me.lucko.fabric.api.permissions.v0.Permissions
+import io.github.kr8gz.playerstatistics.messages.Colors
 import net.minecraft.server.command.ServerCommandSource
 import net.minecraft.text.HoverEvent
 import net.minecraft.text.Text
@@ -16,7 +16,6 @@ import java.util.concurrent.ConcurrentHashMap
 
 object ShareCommand : StatsCommand("share") {
     override fun LiteralCommandBuilder<ServerCommandSource>.build() {
-        requires { Permissions.check(it, PlayerStatistics.Permissions.SHARE, true) }
         executes { source.shareStoredData() }
         argument<UUID>("code") { code ->
             executes { source.shareStoredData(code()) }
@@ -51,12 +50,14 @@ object ShareCommand : StatsCommand("share") {
         if (data.shared) throw Exceptions.ALREADY_SHARED.create() else data.shared = true
 
         server.broadcastText {
-            val message = Text.translatable("playerstatistics.command.share.message", entity?.displayName ?: name, data.label)
-            val hoverText = literalText {
-                text(Texts.bracketed(Text.translatable("playerstatistics.command.share.hover")))
+            val sharerName = (entity?.displayName ?: literalText(name)).build { color = Colors.WHITE }
+            val message = Text.translatable("playerstatistics.command.share.message", sharerName, data.label)
+
+            val hoverText = Texts.bracketed(Text.translatable("playerstatistics.command.share.hover")).build {
                 hoverEvent = HoverEvent(HoverEvent.Action.SHOW_TEXT, data.content)
             }
-            text(message space hoverText)
+
+            text(message.withColor(Colors.GRAY) space hoverText.withColor(Colors.GREEN))
         }
     }
 }
