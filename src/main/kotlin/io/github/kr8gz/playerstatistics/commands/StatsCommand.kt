@@ -91,10 +91,8 @@ abstract class StatsCommand(private val name: String) {
             }
         }
 
-        Registries.STAT_TYPE.entrySet.filter { it != Stats.CUSTOM }.sortedBy { it.key.value }.forEach { (key, statType) ->
-            literal(key.value.path) {
-                addArgumentsForStatType(statType)
-            }
+        Registries.STAT_TYPE.entrySet.filter { it.value != Stats.CUSTOM }.sortedBy { it.key.value }.forEach { (key, statType) ->
+            literal(key.value.path) { addArgumentsForStatType(statType) }
         }
 
         // add custom stats directly to the outer level to make them easier to find
