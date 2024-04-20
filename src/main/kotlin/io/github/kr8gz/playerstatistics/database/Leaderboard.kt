@@ -69,8 +69,8 @@ class Leaderboard<T>(val pageEntries: List<Entry<T>>, val pageCount: Int) {
                 )
                 SELECT $rank, ${Players.name}, ${Statistics.value}, $pageCount
                 FROM leaderboard LEFT JOIN highlight, page_offset, $pageCount
-                WHERE pos >  page_offset * ${page - 1} + COALESCE(highlight < page_offset * ${page - 1}, 0)
-                  AND pos <= page_offset * $page       + COALESCE(highlight < page_offset * $page,       0)
+                WHERE pos >  page_offset * ${page - 1} + COALESCE(highlight <= page_offset * ${page - 1}, 0)
+                  AND pos <= page_offset * $page       + COALESCE(highlight <= page_offset * $page,       0)
                    OR pos = highlight
                 ORDER BY pos
             """).run {
