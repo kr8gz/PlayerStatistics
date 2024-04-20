@@ -10,13 +10,7 @@ object Text {
         builder()
     }
 
-    infix fun Text.newLine(text: Text) = this.build {
-        newLine()
-        text(text)
-    }
+    infix fun Text.newLine(text: Text) = this.build { newLine(); text(text) }
 
-    infix fun Text.space(text: Text) = this.build {
-        text(" ")
-        text(text)
-    }
+    infix fun Text.space(text: Text) = this.build { text(" "); text(text) }
 }

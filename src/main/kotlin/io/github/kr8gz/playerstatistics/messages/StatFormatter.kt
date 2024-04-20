@@ -47,7 +47,7 @@ class StatFormatter<T>(private val stat: Stat<T>) {
                 val kilometers = meters / 1000
 
                 literalText(formatWithUnit(kilometers to "km", meters to "m", value to "cm")) {
-                    val hoverText = Text.translatable("playerstatistics.format.blocks", formatNumber(meters))
+                    val hoverText = Text.translatable("playerstatistics.unit.blocks", formatNumber(meters))
                     hoverEvent = HoverEvent(HoverEvent.Action.SHOW_TEXT, hoverText)
                 }
             }
@@ -60,15 +60,15 @@ class StatFormatter<T>(private val stat: Stat<T>) {
                 val years = days / 365
 
                 literalText(formatWithUnit(years to "y", days to "d", hours to "h", minutes to "m", seconds to "s")) {
-                    val hoverText = Text.translatable("playerstatistics.format.ticks", formatNumber(value))
+                    val hoverText = Text.translatable("playerstatistics.unit.ticks", formatNumber(value))
                     hoverEvent = HoverEvent(HoverEvent.Action.SHOW_TEXT, hoverText)
                 }
             }
 
             StatFormatter.DIVIDE_BY_TEN -> { value ->
                 literalText(formatNumber(value / 20.0)) {
-                    text(" ❤") { color = Colors.HEART; bold = false }
-                    val hoverText = Text.translatable("playerstatistics.format.damage", formatNumber(value / 10.0))
+                    text(" ❤") { color = Colors.RED; bold = false }
+                    val hoverText = Text.translatable("playerstatistics.unit.damage", formatNumber(value / 10.0))
                     hoverEvent = HoverEvent(HoverEvent.Action.SHOW_TEXT, hoverText)
                 }
             }

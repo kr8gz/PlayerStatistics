@@ -1,8 +1,8 @@
 package io.github.kr8gz.playerstatistics.commands
 
 import com.mojang.brigadier.context.CommandContext
+import com.mojang.brigadier.exceptions.CommandExceptionType
 import com.mojang.brigadier.exceptions.CommandSyntaxException
-import com.mojang.brigadier.exceptions.SimpleCommandExceptionType
 import io.github.kr8gz.playerstatistics.database.Database
 import io.github.kr8gz.playerstatistics.database.Players
 import io.github.kr8gz.playerstatistics.database.Statistics
@@ -32,7 +32,6 @@ abstract class StatsCommand(private val name: String) {
         private val subcommands = listOf(
             LeaderboardCommand,
             ServerTotalCommand,
-            PlayerStatCommand,
             PlayerTopStatsCommand,
             PageCommand,
             ShareCommand,
@@ -49,17 +48,20 @@ abstract class StatsCommand(private val name: String) {
 
     abstract fun LiteralCommandBuilder<ServerCommandSource>.build()
 
-    protected enum class Exceptions(translationKey: String) {
+    protected enum class Exceptions(private val translationKey: String) : CommandExceptionType {
+        NO_DATA("playerstatistics.no_data"),
+        UNKNOWN_PLAYER("playerstatistics.argument.player.unknown"),
+
         // Database
         DATABASE_INITIALIZING("playerstatistics.database.initializing"),
         ALREADY_RUNNING("playerstatistics.database.running"),
+
         // Sharing
-        NO_SHARE_RESULTS("playerstatistics.command.share.nothing"),
         SHARE_UNAVAILABLE("playerstatistics.command.share.unavailable"),
         ALREADY_SHARED("playerstatistics.command.share.already_shared");
 
-        private val exception = SimpleCommandExceptionType(Text.translatable(translationKey))
-        fun create(): CommandSyntaxException = exception.create()
+        fun getMessage(vararg args: Any?): Text = Text.stringifiedTranslatable(translationKey, *args)
+        fun create(vararg args: Any?) = CommandSyntaxException(this, getMessage(*args))
     }
 
     private val databaseUsers = ConcurrentHashMap.newKeySet<UUID>()
@@ -110,6 +112,7 @@ abstract class StatsCommand(private val name: String) {
         }
     }
 
+    /** throws if optional and run without specifying a player */
     protected inline fun CommandBuilder.playerArgument(optional: Boolean = false, builder: ArgumentBuilder<String>) {
         argument<String>("player") { player ->
             suggests { Players.nameList }

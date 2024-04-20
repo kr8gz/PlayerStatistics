@@ -24,28 +24,25 @@ object ShareCommand : StatsCommand("share") {
 
     private data class ShareData(val label: Text, val content: Text, var shared: Boolean)
 
-    private val storedShareData = ConcurrentHashMap<UUID, LinkedHashMap<UUID, ShareData>>()
-
     private const val PLAYER_SAVE_LIMIT = 20
 
-    private fun getShareData(uuid: UUID) = storedShareData.getOrPut(uuid) {
-        object : LinkedHashMap<UUID, ShareData>() {
-            override fun removeEldestEntry(eldest: Map.Entry<UUID, ShareData>?) = size > PLAYER_SAVE_LIMIT
+    private val storedShareData = object : ConcurrentHashMap<UUID, LinkedHashMap<UUID, ShareData>>() {
+        fun getOrPut(uuid: UUID) = getOrPut(uuid) {
+            object : LinkedHashMap<UUID, ShareData>() {
+                override fun removeEldestEntry(eldest: Map.Entry<UUID, ShareData>?) = size > PLAYER_SAVE_LIMIT
+            }
         }
     }
 
     fun ServerCommandSource.storeShareData(label: Text, content: Text): UUID = UUID.randomUUID().also { code ->
-        getShareData(uuid)[code] = ShareData(label, content, false)
+        storedShareData.getOrPut(uuid)[code] = ShareData(label, content, false)
     }
 
     private fun ServerCommandSource.shareStoredData(code: UUID? = null) {
-        val shareData = getShareData(uuid)
+        val shareData = storedShareData.getOrPut(uuid)
 
-        val actualCode = code ?: shareData.keys.lastOrNull()
-            ?: throw Exceptions.NO_SHARE_RESULTS.create()
-
-        val data = shareData[actualCode]
-            ?: throw Exceptions.SHARE_UNAVAILABLE.create()
+        val actualCode = code ?: shareData.keys.lastOrNull() ?: throw Exceptions.NO_DATA.create()
+        val data = shareData[actualCode] ?: throw Exceptions.SHARE_UNAVAILABLE.create()
 
         if (data.shared) throw Exceptions.ALREADY_SHARED.create() else data.shared = true
 

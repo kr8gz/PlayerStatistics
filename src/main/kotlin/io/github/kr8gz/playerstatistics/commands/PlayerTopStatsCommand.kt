@@ -21,7 +21,7 @@ object PlayerTopStatsCommand : StatsCommand("top") {
     override fun LiteralCommandBuilder<ServerCommandSource>.build() {
         playerArgument(optional = true) {
             executes {
-                val player = it() // don't throw in coroutine
+                val player = it()
                 usingDatabase { source.sendPlayerTopStats(player) }
             }
         }
@@ -29,14 +29,14 @@ object PlayerTopStatsCommand : StatsCommand("top") {
 
     private suspend fun ServerCommandSource.sendPlayerTopStats(playerName: String, page: Int = 1) {
         val leaderboard = Leaderboard.forPlayer(playerName, page).takeIf { it.pageCount > 0 }
-            ?: return sendError(Text.translatable("playerstatistics.argument.player.unknown", playerName))
+            ?: return sendError(Exceptions.UNKNOWN_PLAYER.getMessage(playerName))
 
         val label = Text.translatable("playerstatistics.command.top", Players.fixName(playerName))
         val content = label.build {
             leaderboard.pageEntries.forEach { (rank, stat, value) ->
                 val statFormatter = StatFormatter(stat)
                 text("\n » ") { color = Colors.DARK_GRAY }
-                text(Text.translatable("playerstatistics.command.player.rank", rank) space statFormatter.name.build {
+                text(Text.translatable("playerstatistics.command.top.rank", rank) space statFormatter.name.build {
                     hoverEvent = HoverEvent(HoverEvent.Action.SHOW_TEXT, Text.translatable("playerstatistics.command.leaderboard.hint"))
                     clickEvent = ClickEvent(ClickEvent.Action.SUGGEST_COMMAND, LeaderboardCommand.format(statFormatter.commandArguments))
                 })

@@ -3,7 +3,6 @@ package io.github.kr8gz.playerstatistics.commands
 import com.mojang.brigadier.arguments.IntegerArgumentType
 import io.github.kr8gz.playerstatistics.extensions.ServerCommandSource.uuid
 import net.minecraft.server.command.ServerCommandSource
-import net.minecraft.text.Text
 import net.silkmc.silk.commands.LiteralCommandBuilder
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
@@ -24,11 +23,11 @@ object PageCommand : StatsCommand("page") {
     fun ServerCommandSource.registerPageAction(max: Int, action: PageAction) {
         pageActions[uuid] = { page ->
             if (page <= max) action(page)
-            else sendError(Text.translatable("playerstatistics.command.page.no_data"))
+            else sendError(Exceptions.NO_DATA.getMessage())
         }
     }
 
     private suspend fun ServerCommandSource.runPageAction(page: Int) {
-        pageActions[uuid]?.let { it(page) } ?: sendError(Text.translatable("playerstatistics.command.page.unavailable"))
+        pageActions[uuid]?.let { it(page) } ?: sendError(Exceptions.NO_DATA.getMessage())
     }
 }
