@@ -116,7 +116,7 @@ abstract class StatsCommand(private val name: String) {
             suggests { Players.nameList }
             builder(player)
         }
-        builder { source.player?.gameProfile?.name }
+        builder { null }
     }
 
     fun formatCommand(vararg args: Any) = buildString {

@@ -18,14 +18,14 @@ object PlayerTopStatsCommand : StatsCommand("top") {
     override fun LiteralCommandBuilder<ServerCommandSource>.build() {
         optionalPlayerArgument {
             executes {
-                val player = it() ?: throw ServerCommandSource.REQUIRES_PLAYER_EXCEPTION.create()
+                val player = it() ?: source.playerOrThrow.gameProfile.name
                 usingDatabase { source.sendPlayerTopStats(player) }
             }
         }
     }
 
     private suspend fun ServerCommandSource.sendPlayerTopStats(playerName: String, page: Int = 1) {
-        val leaderboard = Leaderboard.forPlayer(playerName, page).takeIf { it.pageCount > 0 }
+        val leaderboard = Leaderboard.forPlayer(playerName, page)
             ?: return sendError(Exceptions.UNKNOWN_PLAYER.getMessage(playerName))
 
         val label = run {

@@ -16,9 +16,10 @@ import net.silkmc.silk.core.text.literalText
 object ServerTotalCommand : StatsCommand("total") {
     override fun LiteralCommandBuilder<ServerCommandSource>.build() {
         statArgument { stat ->
-            optionalPlayerArgument { player ->
+            optionalPlayerArgument {
                 executes {
-                    usingDatabase { source.sendServerTotal(stat(), player()) }
+                    val player = it() ?: source.player?.gameProfile?.name
+                    usingDatabase { source.sendServerTotal(stat(), player) }
                 }
             }
         }
@@ -35,7 +36,7 @@ object ServerTotalCommand : StatsCommand("total") {
             val total = Statistics.serverTotal(stat)
             text(": "); text(statFormatter.formatValue(total)) { color = Colors.VALUE_HIGHLIGHT }
 
-            highlightName?.let { Leaderboard.Entry(stat, it) }?.takeIf { it.value > 0 }?.let { (_, name, value) ->
+            highlightName?.let { Leaderboard.Entry(stat, it) }?.let { (_, name, value) ->
                 newLine()
 
                 val formattedName = literalText(name) { color = Colors.WHITE }
