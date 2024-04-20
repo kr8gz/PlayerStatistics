@@ -1,11 +1,11 @@
-package io.github.kr8gz.playerstatistics.command
+package io.github.kr8gz.playerstatistics.commands
 
 import com.mojang.brigadier.arguments.IntegerArgumentType
 import io.github.kr8gz.playerstatistics.extensions.ServerCommandSource.uuid
 import net.minecraft.server.command.ServerCommandSource
 import net.minecraft.text.Text
 import net.silkmc.silk.commands.LiteralCommandBuilder
-import java.util.*
+import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
 
 private typealias PageAction = suspend ServerCommandSource.(page: Int) -> Unit

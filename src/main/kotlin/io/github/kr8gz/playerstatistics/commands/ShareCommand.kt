@@ -1,4 +1,4 @@
-package io.github.kr8gz.playerstatistics.command
+package io.github.kr8gz.playerstatistics.commands
 
 import io.github.kr8gz.playerstatistics.PlayerStatistics
 import io.github.kr8gz.playerstatistics.extensions.ServerCommandSource.uuid
@@ -11,7 +11,7 @@ import net.minecraft.text.Texts
 import net.silkmc.silk.commands.LiteralCommandBuilder
 import net.silkmc.silk.core.text.broadcastText
 import net.silkmc.silk.core.text.literalText
-import java.util.*
+import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
 
 object ShareCommand : StatsCommand("share") {

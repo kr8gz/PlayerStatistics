@@ -1,4 +1,4 @@
-package io.github.kr8gz.playerstatistics.command
+package io.github.kr8gz.playerstatistics.commands
 
 import com.mojang.brigadier.builder.ArgumentBuilder
 import com.mojang.brigadier.context.CommandContext

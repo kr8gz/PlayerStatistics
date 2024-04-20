@@ -1,4 +1,4 @@
-package io.github.kr8gz.playerstatistics.command
+package io.github.kr8gz.playerstatistics.commands
 
 import com.mojang.brigadier.context.CommandContext
 import com.mojang.brigadier.exceptions.CommandSyntaxException
@@ -20,7 +20,7 @@ import net.minecraft.text.Text
 import net.silkmc.silk.commands.ArgumentResolver
 import net.silkmc.silk.commands.LiteralCommandBuilder
 import net.silkmc.silk.commands.command
-import java.util.*
+import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
 
 private typealias CommandBuilder = net.silkmc.silk.commands.CommandBuilder<ServerCommandSource, *, *>
@@ -40,10 +40,8 @@ abstract class StatsCommand(private val name: String) {
 
         init {
             command(Root.name) {
-                subcommands.forEach {
-                    it.run {
-                        literal(name) { build() }
-                    }
+                for (command in subcommands) command.run {
+                    literal(name) { build() }
                 }
             }
         }
@@ -122,6 +120,6 @@ abstract class StatsCommand(private val name: String) {
 
     fun format(vararg args: Any) = buildString {
         append("/${Root.name} $name")
-        args.forEach { append(" "); append(it) }
+        args.forEach { append(" $it") }
     }
 }

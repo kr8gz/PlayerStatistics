@@ -2,7 +2,7 @@ package io.github.kr8gz.playerstatistics.database
 
 import com.mojang.authlib.GameProfile
 import kotlinx.coroutines.coroutineScope
-import java.util.*
+import java.util.UUID
 
 object Players : Database.Table("players") {
     const val uuid = "uuid"

@@ -1,13 +1,15 @@
-package io.github.kr8gz.playerstatistics.command
+package io.github.kr8gz.playerstatistics.commands
 
-import io.github.kr8gz.playerstatistics.command.PageCommand.registerPageAction
-import io.github.kr8gz.playerstatistics.command.ShareCommand.storeShareData
+import io.github.kr8gz.playerstatistics.commands.PageCommand.registerPageAction
+import io.github.kr8gz.playerstatistics.commands.ShareCommand.storeShareData
 import io.github.kr8gz.playerstatistics.database.Leaderboard
 import io.github.kr8gz.playerstatistics.database.Players
 import io.github.kr8gz.playerstatistics.extensions.ServerCommandSource.sendFeedback
 import io.github.kr8gz.playerstatistics.extensions.Text.newLine
 import io.github.kr8gz.playerstatistics.extensions.Text.space
-import io.github.kr8gz.playerstatistics.messages.*
+import io.github.kr8gz.playerstatistics.messages.Colors
+import io.github.kr8gz.playerstatistics.messages.Components
+import io.github.kr8gz.playerstatistics.messages.StatFormatter
 import net.minecraft.server.command.ServerCommandSource
 import net.minecraft.text.ClickEvent
 import net.minecraft.text.HoverEvent
@@ -33,13 +35,14 @@ object PlayerTopStatsCommand : StatsCommand("top") {
         val content = literalText {
             text(label)
             leaderboard.pageEntries.forEach { (rank, stat, value) ->
+                val statFormatter = StatFormatter(stat)
                 text("\n» ") { color = Colors.DARK_GRAY }
                 text(Text.translatable("playerstatistics.command.player.rank", rank) space literalText {
-                    text(stat.formatName())
+                    text(statFormatter.name)
                     hoverEvent = HoverEvent(HoverEvent.Action.SHOW_TEXT, Text.translatable("playerstatistics.command.leaderboard.hint"))
-                    clickEvent = ClickEvent(ClickEvent.Action.SUGGEST_COMMAND, LeaderboardCommand.format(stat.asCommandArguments()))
+                    clickEvent = ClickEvent(ClickEvent.Action.SUGGEST_COMMAND, LeaderboardCommand.format(statFormatter.commandArguments))
                 })
-                text(" - "); text(stat.formatValue(value))
+                text(" - "); text(statFormatter.formatValue(value))
             }
         }
 

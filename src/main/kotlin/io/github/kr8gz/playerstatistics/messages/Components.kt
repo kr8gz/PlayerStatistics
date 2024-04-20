@@ -1,11 +1,11 @@
 package io.github.kr8gz.playerstatistics.messages
 
-import io.github.kr8gz.playerstatistics.command.PageCommand
-import io.github.kr8gz.playerstatistics.command.ShareCommand
+import io.github.kr8gz.playerstatistics.commands.PageCommand
+import io.github.kr8gz.playerstatistics.commands.ShareCommand
 import io.github.kr8gz.playerstatistics.extensions.Text.space
 import net.minecraft.text.*
 import net.silkmc.silk.core.text.literalText
-import java.util.*
+import java.util.UUID
 
 object Components {
     fun shareButton(code: UUID) = literalText {

@@ -4,7 +4,7 @@ import io.github.kr8gz.playerstatistics.access.ServerStatHandlerMixinAccess
 import net.minecraft.stat.ServerStatHandler
 import net.minecraft.stat.Stat
 import org.apache.commons.io.FilenameUtils
-import java.util.*
+import java.util.UUID
 
 object ServerStatHandler {
     val ServerStatHandler.uuid: UUID
