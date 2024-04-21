@@ -51,10 +51,16 @@ object LeaderboardCommand : StatsCommand("leaderboard") {
                     color = highlight(Colors.GRAY) ?: Colors.DARK_GRAY
 
                     newLine()
-                    text(" » ")     { bold = false }
+                    text(" » ") { bold = false }
                     text("$rank. ") { color = highlight(Colors.GREEN) ?: Colors.GOLD }
-                    text(player)    { color = highlight(Colors.WHITE) ?: Colors.YELLOW }
-                    text(" - ")     { bold = false }
+                    text(player) {
+                        color = highlight(Colors.WHITE) ?: Colors.YELLOW
+                        if (!highlightPlayer) {
+                            hoverEvent = HoverEvent(HoverEvent.Action.SHOW_TEXT, Text.translatable("playerstatistics.command.leaderboard.highlight"))
+                            clickEvent = ClickEvent(ClickEvent.Action.RUN_COMMAND, formatCommand(statFormatter.commandArguments, player))
+                        }
+                    }
+                    text(" - ") { bold = false }
                     text(statFormatter.formatValue(value)) { color = highlight(Colors.VALUE_HIGHLIGHT) ?: Colors.VALUE }
                 }
             }

@@ -1,6 +1,7 @@
 {
   "playerstatistics.argument.player.unknown": "Spieler %s wurde in der Datenbank nicht gefunden",
   "playerstatistics.command.leaderboard": "Rangliste für %s",
+  "playerstatistics.command.leaderboard.highlight": "Zum Hervorheben klicken",
   "playerstatistics.command.leaderboard.hint": "Zeige Rangliste für diese Statistik",
   "playerstatistics.command.page": "Seite %s von %s",
   "playerstatistics.command.page.next": "Nächste Seite",
