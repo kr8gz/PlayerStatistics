@@ -18,7 +18,7 @@ object PlayerStatistics : DedicatedServerModInitializer {
     override fun onInitializeServer() {
         StatsCommand
 
-        ServerLifecycleEvents.SERVER_STARTING.register(Database::initialize)
+        ServerLifecycleEvents.SERVER_STARTING.register(Database.Initializer::invoke)
 
         ServerPlayConnectionEvents.JOIN.register { handler, _, _ ->
             Database.transaction { Players.updateProfile(handler.player.gameProfile) }

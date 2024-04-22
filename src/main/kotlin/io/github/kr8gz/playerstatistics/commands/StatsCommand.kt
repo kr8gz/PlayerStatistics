@@ -11,7 +11,6 @@ import io.github.kr8gz.playerstatistics.extensions.ServerCommandSource.uuid
 import net.minecraft.command.CommandRegistryAccess
 import net.minecraft.command.argument.RegistryEntryArgumentType
 import net.minecraft.registry.Registries
-import net.minecraft.resource.featuretoggle.ToggleableFeature
 import net.minecraft.server.command.ServerCommandSource
 import net.minecraft.stat.Stat
 import net.minecraft.stat.StatType
@@ -67,7 +66,7 @@ abstract class StatsCommand(private val name: String) {
     private val databaseUsers = ConcurrentHashMap.newKeySet<UUID>()
 
     protected fun CommandContext<ServerCommandSource>.usingDatabase(command: suspend () -> Unit) {
-        if (Database.isInitializing) throw Exceptions.DATABASE_INITIALIZING.create()
+        if (Database.Initializer.inProgress) throw Exceptions.DATABASE_INITIALIZING.create()
         if (!databaseUsers.add(source.uuid)) throw Exceptions.ALREADY_RUNNING.create()
 
         Database.transaction {
@@ -78,7 +77,7 @@ abstract class StatsCommand(private val name: String) {
         }
     }
 
-    protected fun CommandBuilder.statArgument(builder: ArgumentBuilder<Stat<*>>) {
+    protected fun CommandBuilder.statArgument(builder: ArgumentBuilder<Stat<*>?>) {
         fun <T> CommandBuilder.addArgumentsForStatType(statType: StatType<T>, shortIds: Boolean = false) {
             val argumentType = { registryAccess: CommandRegistryAccess ->
                 RegistryEntryArgumentType.registryEntry(registryAccess, statType.registry.key)
@@ -99,13 +98,7 @@ abstract class StatsCommand(private val name: String) {
         addArgumentsForStatType(Stats.CUSTOM, shortIds = true)
 
         literal("random") {
-            builder {
-                fun <T> StatType<T>.getAll() = registry
-                    .filter { it !is ToggleableFeature || it.isEnabled(source.enabledFeatures) }
-                    .map(::getOrCreateStat)
-
-                Registries.STAT_TYPE.flatMap { it.getAll() }.random()
-            }
+            builder { Statistics.statList.randomOrNull() }
         }
     }
 

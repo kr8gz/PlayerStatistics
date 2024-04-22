@@ -13,8 +13,8 @@ object Players : Database.Table("players") {
         "$name VARCHAR(16) NOT NULL COLLATE NOCASE",
     )
 
-    private val nameMap by lazy {
-        Database.prepareStatement("SELECT * FROM $Players").executeQuery().use { rs ->
+    private val nameMap by Database.Deferred {
+        prepareStatement("SELECT * FROM $Players").executeQuery().use { rs ->
             generateSequence {
                 rs.takeIf { it.next() }?.run {
                     UUID.fromString(getString(uuid)) to getString(name)

@@ -19,11 +19,12 @@ import net.silkmc.silk.commands.LiteralCommandBuilder
 
 object LeaderboardCommand : StatsCommand("leaderboard") {
     override fun LiteralCommandBuilder<ServerCommandSource>.build() {
-        statArgument { stat ->
-            optionalPlayerArgument {
+        statArgument { maybeStat ->
+            optionalPlayerArgument { maybePlayer ->
                 executes {
-                    val player = it() ?: source.player?.gameProfile?.name
-                    usingDatabase { source.sendLeaderboard(stat(), player) }
+                    val stat = maybeStat() ?: throw Exceptions.NO_DATA.create()
+                    val player = maybePlayer() ?: source.player?.gameProfile?.name
+                    usingDatabase { source.sendLeaderboard(stat, player) }
                 }
             }
         }
@@ -54,10 +55,10 @@ object LeaderboardCommand : StatsCommand("leaderboard") {
                     text(" » ") { bold = false }
                     text("$rank. ") { color = highlight(Colors.GREEN) ?: Colors.GOLD }
                     text(player) {
-                        color = highlight(Colors.WHITE) ?: Colors.YELLOW
-                        if (!highlightPlayer) {
+                        color = highlight(Colors.WHITE) ?: run {
                             hoverEvent = HoverEvent(HoverEvent.Action.SHOW_TEXT, Text.translatable("playerstatistics.command.leaderboard.highlight"))
                             clickEvent = ClickEvent(ClickEvent.Action.RUN_COMMAND, formatCommand(statFormatter.commandArguments, player))
+                            Colors.YELLOW
                         }
                     }
                     text(" - ") { bold = false }

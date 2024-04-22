@@ -15,11 +15,12 @@ import net.silkmc.silk.core.text.literalText
 
 object ServerTotalCommand : StatsCommand("total") {
     override fun LiteralCommandBuilder<ServerCommandSource>.build() {
-        statArgument { stat ->
-            optionalPlayerArgument {
+        statArgument { maybeStat ->
+            optionalPlayerArgument { maybePlayer ->
                 executes {
-                    val player = it() ?: source.player?.gameProfile?.name
-                    usingDatabase { source.sendServerTotal(stat(), player) }
+                    val stat = maybeStat() ?: throw Exceptions.NO_DATA.create()
+                    val player = maybePlayer() ?: source.player?.gameProfile?.name
+                    usingDatabase { source.sendServerTotal(stat, player) }
                 }
             }
         }

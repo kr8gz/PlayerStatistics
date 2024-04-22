@@ -16,9 +16,9 @@ import net.silkmc.silk.core.text.literalText
 
 object PlayerTopStatsCommand : StatsCommand("top") {
     override fun LiteralCommandBuilder<ServerCommandSource>.build() {
-        optionalPlayerArgument {
+        optionalPlayerArgument { maybePlayer ->
             executes {
-                val player = it() ?: source.playerOrThrow.gameProfile.name
+                val player = maybePlayer() ?: source.playerOrThrow.gameProfile.name
                 usingDatabase { source.sendPlayerTopStats(player) }
             }
         }

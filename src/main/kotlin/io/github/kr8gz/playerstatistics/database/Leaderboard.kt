@@ -1,10 +1,7 @@
 package io.github.kr8gz.playerstatistics.database
 
 import kotlinx.coroutines.coroutineScope
-import net.minecraft.registry.Registries
 import net.minecraft.stat.Stat
-import net.minecraft.stat.StatType
-import net.minecraft.util.Identifier
 import java.sql.ResultSet
 
 class Leaderboard<T>(val pageEntries: List<Entry<T>>, val pageCount: Int) {
@@ -100,10 +97,7 @@ class Leaderboard<T>(val pageEntries: List<Entry<T>>, val pageCount: Int) {
                 setString(1, name)
                 executeQuery()
             }.generateLeaderboard {
-                getString(Statistics.stat).split(':').map { Identifier.splitOn(it, '.') }.let { (statTypeId, statId) ->
-                    fun <T> StatType<T>.getStat(id: Identifier) = registry[id]?.let(::getOrCreateStat)
-                    Registries.STAT_TYPE[statTypeId]?.getStat(statId)
-                }?.let { stat ->
+                Statistics.parseStat(getString(Statistics.stat))?.let { stat ->
                     Entry(getInt(rank), stat, getInt(Statistics.value))
                 }
             }
