@@ -33,7 +33,7 @@ object Statistics : Database.Table("statistics") {
         }
     }
 
-    val statList by Database.Deferred {
+    val statList by Database.Initializer {
         prepareStatement("SELECT DISTINCT $stat FROM $Statistics").executeQuery().use { rs ->
             generateSequence {
                 rs.takeIf { it.next() }?.getString(stat)

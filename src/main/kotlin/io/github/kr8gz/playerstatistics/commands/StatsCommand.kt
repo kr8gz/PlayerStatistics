@@ -66,7 +66,7 @@ abstract class StatsCommand(private val name: String) {
     private val databaseUsers = ConcurrentHashMap.newKeySet<UUID>()
 
     protected fun CommandContext<ServerCommandSource>.usingDatabase(command: suspend () -> Unit) {
-        if (Database.Initializer.inProgress) throw Exceptions.DATABASE_INITIALIZING.create()
+        if (!Database.Initializer.isCompleted) throw Exceptions.DATABASE_INITIALIZING.create()
         if (!databaseUsers.add(source.uuid)) throw Exceptions.ALREADY_RUNNING.create()
 
         Database.transaction {

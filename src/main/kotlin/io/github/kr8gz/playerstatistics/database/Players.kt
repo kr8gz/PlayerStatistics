@@ -13,7 +13,7 @@ object Players : Database.Table("players") {
         "$name VARCHAR(16) NOT NULL COLLATE NOCASE",
     )
 
-    private val nameMap by Database.Deferred {
+    private val nameMap by Database.Initializer {
         prepareStatement("SELECT * FROM $Players").executeQuery().use { rs ->
             generateSequence {
                 rs.takeIf { it.next() }?.run {
