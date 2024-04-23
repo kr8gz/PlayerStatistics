@@ -8,13 +8,9 @@ import net.minecraft.server.MinecraftServer
 import net.minecraft.stat.ServerStatHandler
 import net.minecraft.util.WorldSavePath
 import java.nio.file.Files
-import java.sql.Connection
-import java.sql.DriverManager
-import java.sql.PreparedStatement
+import java.sql.*
 import kotlin.streams.asSequence
 import kotlin.time.Duration.Companion.seconds
-
-private typealias DatabaseFunction<T> = suspend Database.() -> T
 
 object Database {
     private val coroutineScope = CoroutineScope(Dispatchers.IO)
@@ -32,7 +28,7 @@ object Database {
         }
     }
 
-    fun transaction(block: DatabaseFunction<Unit>): Job {
+    fun transaction(block: suspend Database.() -> Unit): Job {
         return coroutineScope.launch { Database.block() }.apply {
             invokeOnCompletion { connection.commit() }
         }
@@ -41,7 +37,7 @@ object Database {
     // don't expose the connection object
     fun prepareStatement(sql: String): PreparedStatement = connection.prepareStatement(sql)
 
-    class Initializer<T : Any>(block: DatabaseFunction<T>) {
+    class Initializer<T : Any>(block: suspend Statement.() -> T) {
         private lateinit var value: T
         operator fun getValue(thisRef: Any?, property: Any?) = value
 
@@ -53,7 +49,7 @@ object Database {
             private var job: Job? = null
             val isCompleted get() = job?.isCompleted == true
 
-            val listeners = mutableListOf<DatabaseFunction<Unit>>()
+            private val listeners = mutableListOf<suspend Statement.() -> Unit>()
 
             operator fun invoke(server: MinecraftServer) {
                 URL = server.getSavePath(WorldSavePath.ROOT)
@@ -61,9 +57,11 @@ object Database {
                     .let { "jdbc:sqlite:$it?foreign_keys=on" }
 
                 job = transaction {
-                    listeners.forEach { it() }
-                    val hasExistingEntries = prepareStatement("SELECT 1 FROM $Statistics LIMIT 1").executeQuery().next()
-                    if (!hasExistingEntries) populateTables(server)
+                    connection.createStatement().use { statement ->
+                        listeners.forEach { it(statement) }
+                        val hasExistingEntries = statement.executeQuery("SELECT 1 FROM $Statistics LIMIT 1").next()
+                        if (!hasExistingEntries) populateTables(server)
+                    }
                 }.apply {
                     invokeOnCompletion {
                         PlayerStatistics.LOGGER.info("Finished database initialization")
@@ -102,9 +100,7 @@ object Database {
         protected abstract fun createSQL(): String
 
         init {
-            Initializer.listeners += {
-                connection.createStatement().use { it.executeUpdate(createSQL()) }
-            }
+            Initializer { executeUpdate(createSQL()) }
         }
     }
 

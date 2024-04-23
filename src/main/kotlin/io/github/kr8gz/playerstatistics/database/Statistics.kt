@@ -34,7 +34,7 @@ object Statistics : Database.Table("statistics") {
     }
 
     val statList by Database.Initializer {
-        prepareStatement("SELECT DISTINCT $stat FROM $Statistics").executeQuery().use { rs ->
+        executeQuery("SELECT DISTINCT $stat FROM $Statistics").use { rs ->
             generateSequence {
                 rs.takeIf { it.next() }?.getString(stat)
             }.mapNotNull(::parseStat).toHashSet()

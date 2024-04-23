@@ -14,7 +14,7 @@ object Players : Database.Table("players") {
     )
 
     private val nameMap by Database.Initializer {
-        prepareStatement("SELECT * FROM $Players").executeQuery().use { rs ->
+        executeQuery("SELECT * FROM $Players").use { rs ->
             generateSequence {
                 rs.takeIf { it.next() }?.run {
                     UUID.fromString(getString(uuid)) to getString(name)
