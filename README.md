@@ -25,7 +25,7 @@ even the most specific statistics you can think of!
 ![Tab-completion showcase](gallery/tab-suggestions.png)
 
 ### Leaderboard
-The `/stats leaderboard` will generate a leaderboard of all players for a statistic:
+The `/stats leaderboard` command generates a leaderboard of all players for a statistic:
 
 ![Leaderboard example](gallery/leaderboard.png)
 
