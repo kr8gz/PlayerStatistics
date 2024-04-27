@@ -3,7 +3,7 @@
   "id": "playerstatistics",
   "version": "${version}",
   "name": "Player Statistics",
-  "description": "TODO",
+  "description": "Adds a command to your Fabric server that gives players insights into everyone's statistics.",
   "authors": [
     "kr8gz"
   ],
