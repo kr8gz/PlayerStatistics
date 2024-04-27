@@ -10,13 +10,13 @@ class Leaderboard<T>(val pageEntries: List<Entry<T>>, val pageCount: Int) {
             /** @return key = player name */
             suspend operator fun invoke(stat: Stat<*>, playerName: String): Entry<String>? = coroutineScope {
                 Database.prepareStatement("""
-                    SELECT $rank, ${Players.name}, COALESCE(${Statistics.value}, 0) ${Statistics.value}
+                    SELECT $rank, ${Players.name}, ${Statistics.value}
                     FROM $Players
-                    JOIN $Leaderboard ON ${Players.uuid} = ${Statistics.player}
-                    WHERE ${Players.name} = ? AND ${Statistics.stat} = ?
+                    LEFT JOIN $Leaderboard ON ${Players.uuid} = ${Statistics.player} AND ${Statistics.stat} = ?
+                    WHERE ${Players.name} = ?
                 """).run {
-                    setString(1, playerName)
-                    setString(2, stat.name)
+                    setString(1, stat.name)
+                    setString(2, playerName)
                     executeQuery()
                 }.takeIf { it.next() }?.run {
                     Entry(getInt(rank), getString(Players.name), getInt(Statistics.value))
@@ -24,7 +24,7 @@ class Leaderboard<T>(val pageEntries: List<Entry<T>>, val pageCount: Int) {
             }
         }
     }
-    
+
     companion object : Database.View("ranked_statistics") {
         private const val rank = "rank"
         private const val pageCount = "page_count"

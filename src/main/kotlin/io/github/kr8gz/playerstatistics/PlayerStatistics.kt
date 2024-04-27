@@ -22,7 +22,7 @@ object PlayerStatistics : DedicatedServerModInitializer {
         Leaderboard
 
         // SERVER_STARTED rather than SERVER_STARTING to avoid interfering with user cache initialization
-        ServerLifecycleEvents.SERVER_STARTED.register { Database.Initializer(it) }
+        ServerLifecycleEvents.SERVER_STARTED.register { Database.Initializer.run(it) }
 
         ServerPlayConnectionEvents.JOIN.register { handler, _, _ ->
             Database.transaction { Players.updateProfile(handler.player.gameProfile) }
