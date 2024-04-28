@@ -1,6 +1,8 @@
+![PlayerStatistics icon](src/main/resources/assets/playerstatistics/icon.png)
+
 # Player Statistics
 Adds a command to your Fabric server that gives players insights into everyone's statistics.
-Let them boast and compete for the most useless statistics there are!
+Let them boast and compete for the most meaningless statistics there are!
 
 ## Installation
 Download this mod along with its dependencies and put them in your server's mods folder.
