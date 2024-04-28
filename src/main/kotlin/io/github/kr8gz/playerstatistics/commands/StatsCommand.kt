@@ -78,24 +78,29 @@ abstract class StatsCommand(private val name: String) {
     }
 
     protected fun CommandBuilder.statArgument(builder: ArgumentBuilder<Stat<*>?>) {
-        fun <T> CommandBuilder.addArgumentsForStatType(statType: StatType<T>, shortIds: Boolean = false) {
+        fun <T> CommandBuilder.addArgumentsForStatType(statType: StatType<T>) {
             val argumentType = { registryAccess: CommandRegistryAccess ->
                 RegistryEntryArgumentType.registryEntry(registryAccess, statType.registry.key)
             }
             argument("stat", argumentType) { stat ->
-                if (shortIds) suggests {
-                    statType.registry.ids.map { it.toShortString() }
+                when (statType) {
+                    Stats.BROKEN -> suggestsIdentifiers {
+                        Stats.BROKEN.registry.entrySet.filter { it.value.isDamageable }.map { it.key.value }
+                    }
+                    Stats.CUSTOM -> suggests {
+                        statType.registry.ids.map { it.toShortString() }
+                    }
                 }
                 builder { statType.getOrCreateStat(stat().value()) }
             }
         }
 
-        Registries.STAT_TYPE.entrySet.filter { it.value != Stats.CUSTOM }.sortedBy { it.key.value }.forEach { (key, statType) ->
-            literal(key.value.path) { addArgumentsForStatType(statType) }
+        Registries.STAT_TYPE.entrySet.sortedBy { it.key.value }.forEach { (key, statType) ->
+            when (statType) {
+                Stats.CUSTOM -> addArgumentsForStatType(statType) // add custom stats directly to the outer level to make them easier to find
+                else -> literal(key.value.path) { addArgumentsForStatType(statType) }
+            }
         }
-
-        // add custom stats directly to the outer level to make them easier to find
-        addArgumentsForStatType(Stats.CUSTOM, shortIds = true)
 
         literal("random") {
             builder { Statistics.statList.randomOrNull() }

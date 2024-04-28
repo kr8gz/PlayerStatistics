@@ -3,6 +3,7 @@ package io.github.kr8gz.playerstatistics.commands
 import com.mojang.brigadier.builder.ArgumentBuilder
 import com.mojang.brigadier.context.CommandContext
 import net.minecraft.command.CommandSource
+import net.minecraft.util.Identifier
 import net.silkmc.silk.commands.ArgumentCommandBuilder
 import net.silkmc.silk.commands.CommandBuilder
 
@@ -14,11 +15,18 @@ where S : CommandSource,
     }
 }
 
-inline fun <S> ArgumentCommandBuilder<S, *>.suggests(crossinline values: CommandContext<S>.() -> Iterable<String>)
-where S : CommandSource {
+inline fun <S : CommandSource> ArgumentCommandBuilder<S, *>.suggests(crossinline values: CommandContext<S>.() -> Iterable<String>) {
     brigadier {
         suggests { context, builder ->
             CommandSource.suggestMatching(values(context), builder)
+        }
+    }
+}
+
+inline fun <S : CommandSource> ArgumentCommandBuilder<S, *>.suggestsIdentifiers(crossinline values: CommandContext<S>.() -> Iterable<Identifier>) {
+    brigadier {
+        suggests { context, builder ->
+            CommandSource.suggestIdentifiers(values(context), builder)
         }
     }
 }
