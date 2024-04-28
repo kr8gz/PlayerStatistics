@@ -1,4 +1,4 @@
-![PlayerStatistics icon](src/main/resources/assets/playerstatistics/icon.png)
+![Player Statistics icon](src/main/resources/assets/playerstatistics/icon.png)
 
 # Player Statistics
 Adds a command to your Fabric server that gives players insights into everyone's statistics.

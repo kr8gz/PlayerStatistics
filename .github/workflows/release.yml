@@ -1,0 +1,33 @@
+name: Release
+
+on:
+  release:
+    types:
+      - published
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v1
+        with:
+          java-version: 17
+
+      - name: Build release
+        run: |
+          chmod +x gradlew
+          ./gradlew build
+
+      - name: Upload assets to Modrinth and GitHub
+        uses: Kir-Antipov/mc-publish@v3.3
+        with:
+          modrinth-id: PztDP6Mf
+          modrinth-token: ${{ secrets.MODRINTH_TOKEN }}
+
+          github-token: ${{ secrets.GITHUB_TOKEN }}
