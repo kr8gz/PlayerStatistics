@@ -37,20 +37,16 @@ object ServerTotalCommand : StatsCommand("total") {
             val total = Statistics.serverTotal(stat)
             text(": "); text(statFormatter.formatValue(total)) { color = Colors.VALUE_HIGHLIGHT }
 
-            highlightName?.let { Leaderboard.Entry(stat, it) }?.let { (_, name, value) ->
+            if (total > 0) highlightName?.let { Leaderboard.Entry(stat, it) }?.let { (_, name, value) ->
                 newLine()
-
                 val formattedName = literalText(name) { color = Colors.WHITE }
                 val contributed = statFormatter.formatValue(value).build { color = Colors.VALUE_HIGHLIGHT }
-                text(Text.translatable("playerstatistics.command.total.contributed", formattedName, contributed)) { color = Colors.GRAY }
-
-                text(" ") {
+                text(Text.translatable("playerstatistics.command.total.contributed", formattedName, contributed) space literalText {
                     text("(")
                     val percentage = formatNumber(value.toFloat() / total * 100)
                     text("$percentage%") { color = Colors.VALUE }
                     text(")")
-                    color = Colors.GRAY
-                }
+                }) { color = Colors.GRAY }
             }
         }
 

@@ -98,7 +98,7 @@ abstract class StatsCommand(private val name: String) {
         Registries.STAT_TYPE.entrySet.sortedBy { it.key.value }.forEach { (key, statType) ->
             when (statType) {
                 Stats.CUSTOM -> addArgumentsForStatType(statType) // add custom stats directly to the outer level to make them easier to find
-                else -> literal(key.value.path) { addArgumentsForStatType(statType) }
+                else -> literal(key.value.toShortString()) { addArgumentsForStatType(statType) }
             }
         }
 
