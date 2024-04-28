@@ -29,7 +29,7 @@ The `/stats leaderboard` command generates a leaderboard of all players for a st
 
 ![Leaderboard example](gallery/leaderboard.png)
 
-You can change the highlighted player either by clicking their name on the leaderboard,
+You can change which player is highlighted either by clicking their name on the leaderboard,
 or by adding their name to the end of the command arguments:
 
 ![Custom leaderboard highlight](gallery/leaderboard-highlight.png)
@@ -52,7 +52,7 @@ Clicking on any statistic name will suggest a command to show the leaderboard fo
 
 ### Pagination
 In addition to clicking the arrow buttons at the bottom, you can use `/stats page`
-to easily jump between pages (using the command output above as an example):
+to quickly jump between pages (using the command output above as an example):
 
 ![Pagination example](gallery/pages.png)
 
@@ -82,7 +82,9 @@ You can create command output without any highlight by specifying a non-existent
 </details>
 
 ### Localization
-Server-side translations are provided for all elements of this mod.
-If you can, please consider contributing translations in your preferred language!
+Server-side translations are provided for all elements of this mod &mdash;
+the following output is entirely in German, for example:
 
 ![German translation example](gallery/translations.png)
+
+If you can, please consider contributing translations in your preferred language!
