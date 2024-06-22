@@ -26,8 +26,8 @@ object ShareCommand : StatsCommand("share") {
 
     private const val PLAYER_SAVE_LIMIT = 20
 
-    private val storedShareData = object : ConcurrentHashMap<UUID, LinkedHashMap<UUID, ShareData>>() {
-        fun getOrPut(uuid: UUID) = getOrPut(uuid) {
+    private val playerShareStorage = object : ConcurrentHashMap<UUID, LinkedHashMap<UUID, ShareData>>() {
+        fun getOrCreate(uuid: UUID) = getOrPut(uuid) {
             object : LinkedHashMap<UUID, ShareData>() {
                 override fun removeEldestEntry(eldest: Map.Entry<UUID, ShareData>?) = size > PLAYER_SAVE_LIMIT
             }
@@ -35,26 +35,27 @@ object ShareCommand : StatsCommand("share") {
     }
 
     fun ServerCommandSource.storeShareData(label: Text, content: Text): UUID = UUID.randomUUID().also { code ->
-        storedShareData.getOrPut(uuid)[code] = ShareData(label, content, false)
+        playerShareStorage.getOrCreate(uuid)[code] = ShareData(label, content, false)
     }
 
     private fun ServerCommandSource.shareStoredData(code: UUID? = null) {
-        val shareData = storedShareData.getOrPut(uuid)
+        val playerStorage = playerShareStorage.getOrCreate(uuid)
 
-        val actualCode = code ?: shareData.keys.lastOrNull() ?: throw Exceptions.NO_DATA.create()
-        val data = shareData[actualCode] ?: throw Exceptions.SHARE_UNAVAILABLE.create()
+        val actualCode = code ?: playerStorage.keys.lastOrNull() ?: throw Exceptions.NO_DATA.create()
+        val data = playerStorage[actualCode] ?: throw Exceptions.SHARE_UNAVAILABLE.create()
 
-        if (data.shared) throw Exceptions.ALREADY_SHARED.create() else data.shared = true
+        if (data.shared) throw Exceptions.ALREADY_SHARED.create()
 
-        server.broadcastText {
+        val message = run {
             val sharerName = (entity?.displayName ?: literalText(name)).build { color = Colors.WHITE }
-            val message = Text.translatable("playerstatistics.command.share.message", sharerName, data.label)
-
-            val hoverText = Texts.bracketed(Text.translatable("playerstatistics.command.share.hover")).build {
-                hoverEvent = HoverEvent(HoverEvent.Action.SHOW_TEXT, data.content)
-            }
-
-            text(message.withColor(Colors.GRAY) space hoverText.withColor(Colors.GREEN))
+            Text.translatable("playerstatistics.command.share.message", sharerName, data.label).build { color = Colors.GRAY }
         }
+        val hoverText = Texts.bracketed(Text.translatable("playerstatistics.command.share.hover")).build {
+            hoverEvent = HoverEvent(HoverEvent.Action.SHOW_TEXT, data.content)
+            color = Colors.GREEN
+        }
+        server.broadcastText(message space hoverText)
+
+        data.shared = true
     }
 }

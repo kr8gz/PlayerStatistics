@@ -1,5 +1,5 @@
 plugins {
-    id 'fabric-loom' version '1.6-SNAPSHOT'
+    id 'fabric-loom' version '1.7-SNAPSHOT'
     id 'maven-publish'
     id 'org.jetbrains.kotlin.jvm' version '2.0.0-Beta4'
 }
@@ -36,7 +36,7 @@ dependencies {
     modImplementation "net.fabricmc:fabric-loader:${project.loader_version}"
 
     // Fabric API. This is technically optional, but you probably want it anyway.
-    modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_version}"
+    // modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_version}"
     modImplementation "net.fabricmc:fabric-language-kotlin:${project.fabric_kotlin_version}"
 
     // Silk API
@@ -47,7 +47,7 @@ dependencies {
     modImplementation "maven.modrinth:sqlite-jdbc:${project.sqlite_jdbc_version}"
 
     // Translations
-    include modImplementation('xyz.nucleoid:server-translations-api:2.2.0+1.20.3-rc1')
+    include modImplementation("xyz.nucleoid:server-translations-api:${project.server_translations_version}")
 }
 
 processResources {

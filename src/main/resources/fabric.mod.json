@@ -28,8 +28,7 @@
   "accessWidener" : "playerstatistics.accesswidener",
   "depends": {
     "fabricloader": ">=${loader_version}",
-    "fabric": "*",
-    "minecraft": "${minecraft_version}",
+    "minecraft": ">=1.20 <=1.20.4",
     "fabric-language-kotlin": ">=${fabric_kotlin_version}",
     "sqlite-jdbc": ">=${sqlite_jdbc_version}"
   }

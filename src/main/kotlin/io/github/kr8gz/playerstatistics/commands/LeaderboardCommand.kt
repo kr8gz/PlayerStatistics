@@ -36,7 +36,7 @@ object LeaderboardCommand : StatsCommand("leaderboard") {
 
         val label = run {
             val statName = statFormatter.name.build { color = Colors.WHITE }
-            Text.translatable("playerstatistics.command.leaderboard", statName).withColor(Colors.GRAY)
+            Text.translatable("playerstatistics.command.leaderboard", statName).build { color = Colors.GRAY }
         }
         val content = label.build {
             when (leaderboard) {

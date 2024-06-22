@@ -5,6 +5,7 @@ import io.github.kr8gz.playerstatistics.commands.ShareCommand.storeShareData
 import io.github.kr8gz.playerstatistics.database.Leaderboard
 import io.github.kr8gz.playerstatistics.database.Players
 import io.github.kr8gz.playerstatistics.extensions.ServerCommandSource.sendFeedback
+import io.github.kr8gz.playerstatistics.extensions.Text.build
 import io.github.kr8gz.playerstatistics.extensions.Text.newLine
 import io.github.kr8gz.playerstatistics.messages.Colors
 import io.github.kr8gz.playerstatistics.messages.Components
@@ -30,7 +31,7 @@ object PlayerTopStatsCommand : StatsCommand("top") {
 
         val label = run {
             val player = Players.fixName(playerName) ?: playerName
-            Text.translatable("playerstatistics.command.top", player).withColor(Colors.WHITE)
+            Text.translatable("playerstatistics.command.top", player).build { color = Colors.WHITE }
         }
         val content = literalText {
             text(label.copy()) { bold = true }

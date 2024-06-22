@@ -59,7 +59,7 @@ abstract class StatsCommand(private val name: String) {
         SHARE_UNAVAILABLE("playerstatistics.command.share.unavailable"),
         ALREADY_SHARED("playerstatistics.command.share.already_shared");
 
-        fun getMessage(vararg args: Any?): Text = Text.stringifiedTranslatable(translationKey, *args)
+        fun getMessage(vararg args: Any?): Text = Text.translatable(translationKey, *args)
         fun create(vararg args: Any?) = CommandSyntaxException(this, getMessage(*args))
     }
 
