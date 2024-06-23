@@ -7,7 +7,20 @@ on:
   workflow_dispatch:
 
 jobs:
-  build:
+  changelog:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Update GitHub release
+        uses: tubone24/update_release@v1.3.1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          body_path: CHANGELOG.md
+          is_append_body: true
+
+  publish:
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -19,15 +32,10 @@ jobs:
         with:
           java-version: 17
 
-      - name: Build release
-        run: |
-          chmod +x gradlew
-          ./gradlew build
+      - run: chmod +x gradlew
 
-      - name: Upload assets to Modrinth and GitHub
-        uses: Kir-Antipov/mc-publish@v3.3
-        with:
-          modrinth-id: PztDP6Mf
-          modrinth-token: ${{ secrets.MODRINTH_TOKEN }}
-
-          github-token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Build and publish
+        run: ./gradlew publishAll
+        env:
+          MODRINTH_TOKEN: ${{ secrets.MODRINTH_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

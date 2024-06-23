@@ -1,0 +1,12 @@
+plugins.apply "dev.kikugie.stonecutter"
+stonecutter.active "1.20.3" /* [SC] DO NOT EDIT */
+
+stonecutter.registerChiseled tasks.register("buildAll", stonecutter.chiseled) {
+    setGroup "project"
+    ofTask "build"
+}
+
+stonecutter.registerChiseled tasks.register("publishAll", stonecutter.chiseled) {
+    setGroup "project"
+    ofTask "publishMods"
+}

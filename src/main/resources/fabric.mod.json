@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "id": "playerstatistics",
   "version": "${version}",
-  "name": "Player Statistics",
+  "name": "${name}",
   "description": "Adds a command to your Fabric server that gives players insights into everyone's statistics.",
   "authors": [
     "kr8gz"
@@ -28,7 +28,8 @@
   "accessWidener" : "playerstatistics.accesswidener",
   "depends": {
     "fabricloader": ">=${loader_version}",
-    "minecraft": ">=1.20 <=1.20.4",
+    "fabric": "*",
+    "minecraft": "${minecraft_version}",
     "fabric-language-kotlin": ">=${fabric_kotlin_version}",
     "sqlite-jdbc": ">=${sqlite_jdbc_version}"
   }

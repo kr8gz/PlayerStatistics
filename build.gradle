@@ -2,15 +2,26 @@ plugins {
     id 'fabric-loom' version '1.7-SNAPSHOT'
     id 'maven-publish'
     id 'org.jetbrains.kotlin.jvm' version '2.0.0-Beta4'
+    id 'me.modmuss50.mod-publish-plugin' version '0.5.1'
 }
 
 loom {
-    accessWidenerPath = file("src/main/resources/playerstatistics.accesswidener")
+    accessWidenerPath = getRootProject().file("src/main/resources/playerstatistics.accesswidener")
     serverOnlyMinecraftJar()
+
+    runConfigs.configureEach {
+        ideConfigGenerated true // Run configurations are not created for subprojects by default
+        runDir "../../run" // Use a shared run folder and just create separate worlds
+    }
 }
 
-version = project.mod_version
-group = project.maven_group
+def modName = property('mod.name').toString()
+group = property('mod.group').toString()
+archivesBaseName = property('mod.id').toString()
+
+def modVersion = property('mod.version').toString()
+def mcVersion = property('deps.minecraft.min')
+version = "$modVersion+$mcVersion"
 
 repositories {
     mavenCentral()
@@ -22,94 +33,108 @@ repositories {
     }
     maven { url 'https://oss.sonatype.org/content/repositories/snapshots' }
     maven { url 'https://maven.nucleoid.xyz' }
-    // Add repositories to retrieve artifacts from in here.
-    // You should only use this when depending on other mods because
-    // Loom adds the essential maven repositories to download Minecraft and libraries from automatically.
-    // See https://docs.gradle.org/current/userguide/declaring_repositories.html
-    // for more information about repositories.
 }
 
 dependencies {
     // To change the versions see the gradle.properties file
-    minecraft "com.mojang:minecraft:${project.minecraft_version}"
-    mappings "net.fabricmc:yarn:${project.yarn_mappings}:v2"
-    modImplementation "net.fabricmc:fabric-loader:${project.loader_version}"
+    minecraft "com.mojang:minecraft:$mcVersion"
+    mappings "net.fabricmc:yarn:$mcVersion+build.${property('deps.yarn_build')}:v2"
+    modImplementation "net.fabricmc:fabric-loader:${property('deps.fabric_loader')}"
 
     // Fabric API. This is technically optional, but you probably want it anyway.
-    // modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_version}"
-    modImplementation "net.fabricmc:fabric-language-kotlin:${project.fabric_kotlin_version}"
+    modImplementation "net.fabricmc.fabric-api:fabric-api:${property('deps.fabric_api')}"
+    modImplementation "net.fabricmc:fabric-language-kotlin:${property('deps.fabric_kotlin')}"
 
     // Silk API
-    include modImplementation("net.silkmc:silk-core:${project.silk_version}")
-    include modImplementation("net.silkmc:silk-commands:${project.silk_version}")
+    include modImplementation("net.silkmc:silk-core:${property('deps.silk')}")
+    include modImplementation("net.silkmc:silk-commands:${property('deps.silk')}")
 
     // Database
-    modImplementation "maven.modrinth:sqlite-jdbc:${project.sqlite_jdbc_version}"
+    modImplementation "maven.modrinth:sqlite-jdbc:${property('deps.sqlite_jdbc')}"
 
     // Translations
-    include modImplementation("xyz.nucleoid:server-translations-api:${project.server_translations_version}")
+    include modImplementation("xyz.nucleoid:server-translations-api:${property('deps.server_translations')}")
 }
+
+def targetMCVersions() {
+    def min = property('deps.minecraft.min')
+    def max = property('deps.minecraft.max')
+    min == max ? min : ">=$min- <=$max"
+}
+
+def expandProperties = [
+    "version": project.version,
+    "name": modName,
+    "minecraft_version": targetMCVersions(),
+    "loader_version": property('deps.fabric_loader'),
+    "fabric_kotlin_version": property('deps.fabric_kotlin'),
+    "sqlite_jdbc_version": property('deps.sqlite_jdbc'),
+]
 
 processResources {
-    inputs.property "version", project.version
-    inputs.property "minecraft_version", project.minecraft_version
-    inputs.property "loader_version", project.loader_version
-    inputs.property "fabric_kotlin_version", project.fabric_kotlin_version
-    inputs.property "sqlite_jdbc_version", project.sqlite_jdbc_version
+    inputs.properties expandProperties
     filteringCharset "UTF-8"
-
-    filesMatching("fabric.mod.json") {
-        expand "version": project.version,
-                "minecraft_version": project.minecraft_version,
-                "loader_version": project.loader_version,
-                "fabric_kotlin_version": project.fabric_kotlin_version,
-                "sqlite_jdbc_version": project.sqlite_jdbc_version
-    }
+    filesMatching("fabric.mod.json") { expand expandProperties }
 }
 
-def targetJavaVersion = 17
-tasks.withType(JavaCompile).configureEach {
-    // ensure that the encoding is set to UTF-8, no matter what the system default is
-    // this fixes some edge cases with special characters not displaying correctly
-    // see http://yodaconditions.net/blog/fix-for-java-file-encoding-problems-with-gradle.html
-    // If Javadoc is generated, this must be specified in that task too.
-    it.options.encoding = "UTF-8"
-    if (targetJavaVersion >= 10 || JavaVersion.current().isJava10Compatible()) {
-        it.options.release.set(targetJavaVersion)
-    }
+// Collect builds into one directory per mod version
+tasks.register("collectJars", Copy) {
+    group = "build"
+    from remapJar.archiveFile
+    into rootProject.layout.buildDirectory.file("libs/$modVersion")
 }
 
-java {
-    def javaVersion = JavaVersion.toVersion(targetJavaVersion)
-    if (JavaVersion.current() < javaVersion) {
-        toolchain.languageVersion = JavaLanguageVersion.of(targetJavaVersion)
+build {
+    finalizedBy "collectJars"
+}
+
+// Env configuration
+stonecutter {
+    def java21 = mcVersion >= "1.20.5"
+    java {
+        withSourcesJar()
+        sourceCompatibility = java21 ? JavaVersion.VERSION_21 : JavaVersion.VERSION_17
+        targetCompatibility = java21 ? JavaVersion.VERSION_21 : JavaVersion.VERSION_17
     }
-    archivesBaseName = project.archives_base_name
-    // Loom will automatically attach sourcesJar to a RemapSourcesJar task and to the "build" task
-    // if it is present.
-    // If you remove this line, sources will not be generated.
-    withSourcesJar()
+    kotlin {
+        jvmToolchain(java21 ? 21 : 17)
+    }
 }
 
 jar {
     from("LICENSE") {
-        rename { "${it}_${project.archivesBaseName}"}
+        rename { "${it}_$archivesBaseName"}
     }
 }
 
-// configure the maven publication
-publishing {
-    publications {
-        mavenJava(MavenPublication) {
-            from components.java
-        }
+publishMods {
+    type = BETA
+
+    modLoaders.add("fabric")
+    file = remapJar.archiveFile
+    additionalFiles.from(remapSourcesJar.archiveFile)
+    displayName = "$modName $modVersion for $mcVersion"
+    version = project.version
+    changelog = rootProject.file("CHANGELOG.md").text
+
+    modrinth {
+        projectId = 'PztDP6Mf'
+        accessToken = providers.environmentVariable('MODRINTH_TOKEN')
+
+        def min = property('deps.minecraft.min')
+        def max = property('deps.minecraft.max')
+
+        if (min == max) minecraftVersions.add(min)
+        else minecraftVersionRange { start = min; end = max }
+
+        requires 'fabric-api'
+        requires 'fabric-language-kotlin'
+        requires 'sqlite-jdbc'
     }
 
-    // See https://docs.gradle.org/current/userguide/publishing_maven.html for information on how to set up publishing.
-    repositories {
-        // Add repositories to publish to here.
-        // Notice: This block does NOT have the same function as the block in the top level.
-        // The repositories here will be used for publishing your artifact, not for
-        // retrieving dependencies.
+    github {
+        repository = "kr8gz/PlayerStatistics"
+        commitish = "master"
+        accessToken = providers.environmentVariable("GITHUB_TOKEN")
     }
 }
