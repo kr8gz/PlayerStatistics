@@ -116,11 +116,11 @@ publishMods {
     displayName = "$modName $modVersion"
     changelog = rootProject.file("CHANGELOG.md").text
 
-    dryRun = ['MODRINTH_TOKEN', 'GITHUB_TOKEN'].any { providers.environmentVariable(it).getOrNull() == null }
 
     modrinth {
         projectId = 'PztDP6Mf'
         accessToken = providers.environmentVariable('MODRINTH_TOKEN')
+        dryRun = accessToken.getOrNull() == null
 
         def min = property('deps.minecraft.min')
         def max = property('deps.minecraft.max')
@@ -131,12 +131,5 @@ publishMods {
         requires 'fabric-api'
         requires 'fabric-language-kotlin'
         requires 'sqlite-jdbc'
-    }
-
-    github {
-        repository = 'kr8gz/PlayerStatistics'
-        commitish = 'master'
-        tagName = modVersion
-        accessToken = providers.environmentVariable('GITHUB_TOKEN')
     }
 }
