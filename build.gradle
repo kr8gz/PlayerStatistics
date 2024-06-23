@@ -113,9 +113,10 @@ publishMods {
     modLoaders.add("fabric")
     file = remapJar.archiveFile
     additionalFiles.from(remapSourcesJar.archiveFile)
-    displayName = "$modName $modVersion for $mcVersion"
-    version = project.version
+    displayName = "$modName $modVersion"
     changelog = rootProject.file("CHANGELOG.md").text
+
+    dryRun = ['MODRINTH_TOKEN', 'GITHUB_TOKEN'].any { providers.environmentVariable(it).getOrNull() == null }
 
     modrinth {
         projectId = 'PztDP6Mf'
@@ -133,8 +134,9 @@ publishMods {
     }
 
     github {
-        repository = "kr8gz/PlayerStatistics"
-        commitish = "master"
-        accessToken = providers.environmentVariable("GITHUB_TOKEN")
+        repository = 'kr8gz/PlayerStatistics'
+        commitish = 'master'
+        tagName = modVersion
+        accessToken = providers.environmentVariable('GITHUB_TOKEN')
     }
 }

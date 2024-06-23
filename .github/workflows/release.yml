@@ -7,19 +7,6 @@ on:
   workflow_dispatch:
 
 jobs:
-  changelog:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v2
-
-      - name: Update GitHub release
-        uses: tubone24/update_release@v1.3.1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          body_path: CHANGELOG.md
-          is_append_body: true
-
   publish:
     runs-on: ubuntu-latest
     permissions:
