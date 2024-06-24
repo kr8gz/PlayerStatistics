@@ -1,42 +1,60 @@
-name: Release
+name: Release new version
+run-name: Release new ${{ inputs.release_type }} version
 
 on:
-  release:
-    types:
-      - published
   workflow_dispatch:
+    inputs:
+      release_type:
+        type: choice
+        description: Release type
+        options:
+          - Stable
+          - Beta
+          - Alpha
+
+permissions:
+  contents: write
 
 jobs:
-  changelog:
+  release:
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
 
-      - name: Update GitHub release
-        uses: tubone24/update_release@v1.3.1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          body_path: CHANGELOG.md
-          is_append_body: true
-
-  publish:
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-    steps:
-      - uses: actions/checkout@v2
-
-      - name: Set up JDK 17
+      - name: Set up Java
         uses: actions/setup-java@v1
         with:
           java-version: 17
 
-      - run: chmod +x gradlew
+      - name: Make gradlew executable
+        run: chmod +x gradlew
 
-      - name: Build and publish
+      - name: Build
+        run: ./gradlew buildAll
+
+      - name: Determine version
+        id: read_version
+        uses: christian-draeger/read-properties@1.1.1
+        with:
+          path: gradle.properties
+          properties: mod.version
+
+      - name: Write version to env for simpler access
+        run: echo "MOD_VERSION=${{ steps.read_version.outputs.mod-version }}" >> $GITHUB_ENV
+
+      - name: Create GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ env.MOD_VERSION }}
+          name: Release ${{ env.MOD_VERSION }}
+          prerelease: ${{ inputs.release_type != 'Stable' }}
+          body_path: CHANGELOG.md
+          files: build/libs/${{ env.MOD_VERSION }}/*.jar
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Publish
         run: ./gradlew publishAll
         env:
           MODRINTH_TOKEN: ${{ secrets.MODRINTH_TOKEN }}
+          RELEASE_TYPE: ${{ inputs.release_type }}

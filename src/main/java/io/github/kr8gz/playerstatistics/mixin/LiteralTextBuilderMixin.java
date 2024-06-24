@@ -9,9 +9,11 @@ import org.spongepowered.asm.mixin.injection.Redirect;
 
 @Mixin(LiteralTextBuilder.class)
 public abstract class LiteralTextBuilderMixin {
-    @Redirect(method = "build",
+    //? if silk: <1.10.4 {
+    /*@Redirect(method = "build",
               at = @At(value = "INVOKE", target = "Lnet/minecraft/text/MutableText;setStyle(Lnet/minecraft/text/Style;)Lnet/minecraft/text/MutableText;"))
     private MutableText fixStyle(MutableText text, Style currentStyle) {
         return text.styled(style -> style.withParent(currentStyle));
     }
+    *///?}
 }

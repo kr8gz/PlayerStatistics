@@ -9,6 +9,7 @@ import net.minecraft.stat.ServerStatHandler
 import net.minecraft.util.WorldSavePath
 import java.nio.file.Files
 import java.sql.*
+import kotlin.io.path.exists
 import kotlin.streams.asSequence
 import kotlin.time.Duration.Companion.seconds
 
@@ -70,9 +71,8 @@ object Database {
             }
 
             private suspend fun populateTables(server: MinecraftServer) {
-                fun streamStatsFiles() = Files.list(server.getSavePath(WorldSavePath.STATS))
-
-                val fileCount = streamStatsFiles().count().also { if (it == 0L) return }
+                val statsPath = server.getSavePath(WorldSavePath.STATS).takeIf { it.exists() } ?: return
+                val fileCount = Files.list(statsPath).count().takeIf { it > 0 } ?: return
                 val completedFiles = atomic(0)
 
                 coroutineScope.launch {
@@ -82,7 +82,7 @@ object Database {
                     }
                 }
 
-                streamStatsFiles().asSequence().forEach { path ->
+                Files.list(statsPath).asSequence().forEach { path ->
                     val statHandler = ServerStatHandler(server, path.toFile())
                     // the user cache can only store up to 1000 players by default, but at least it's better than nothing
                     server.userCache?.getByUuid(statHandler.uuid)?.let { if (it.isPresent) Players.updateProfile(it.get()) }

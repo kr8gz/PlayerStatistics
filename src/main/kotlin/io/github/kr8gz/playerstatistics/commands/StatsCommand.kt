@@ -9,7 +9,6 @@ import io.github.kr8gz.playerstatistics.database.Statistics
 import io.github.kr8gz.playerstatistics.extensions.Identifier.toShortString
 import io.github.kr8gz.playerstatistics.extensions.ServerCommandSource.uuid
 import net.minecraft.command.CommandRegistryAccess
-import net.minecraft.command.argument.RegistryEntryArgumentType
 import net.minecraft.registry.Registries
 import net.minecraft.server.command.ServerCommandSource
 import net.minecraft.stat.Stat
@@ -21,6 +20,11 @@ import net.silkmc.silk.commands.LiteralCommandBuilder
 import net.silkmc.silk.commands.command
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
+
+//? if <1.20.5 {
+/*import net.minecraft.command.argument.RegistryEntryArgumentType
+*///?} else
+import net.minecraft.command.argument.RegistryEntryReferenceArgumentType as RegistryEntryArgumentType
 
 private typealias CommandBuilder = net.silkmc.silk.commands.CommandBuilder<ServerCommandSource, *, *>
 private typealias ArgumentBuilder<T> = CommandBuilder.(ArgumentResolver<ServerCommandSource, T>) -> Unit
@@ -85,7 +89,10 @@ abstract class StatsCommand(private val name: String) {
             argument("stat", argumentType) { stat ->
                 when (statType) {
                     Stats.BROKEN -> suggestsIdentifiers {
-                        Stats.BROKEN.registry.entrySet.filter { it.value.isDamageable }.map { it.key.value }
+                        Stats.BROKEN.registry.entrySet.filter {
+                            /*? if <1.20.5 {*/ /*it.value.isDamageable *///?} else
+                            it.value.components.contains(net.minecraft.component.DataComponentTypes.DAMAGE)
+                        }.map { it.key.value }
                     }
                     Stats.CUSTOM -> suggests {
                         statType.registry.ids.map { it.toShortString() }

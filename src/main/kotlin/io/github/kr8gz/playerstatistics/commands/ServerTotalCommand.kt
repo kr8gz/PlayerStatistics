@@ -30,8 +30,8 @@ object ServerTotalCommand : StatsCommand("total") {
         val statFormatter = StatFormatter(stat)
 
         val label = run {
-            val statName = LeaderboardCommand.formatStatNameWithSuggestion(statFormatter).build { Colors.WHITE }
-            Text.translatable("playerstatistics.command.total", statName).build { Colors.GRAY }
+            val statName = LeaderboardCommand.formatStatNameWithSuggestion(statFormatter).build { color = Colors.WHITE }
+            Text.translatable("playerstatistics.command.total", statName).build { color = Colors.GRAY }
         }
         val content = label.build {
             val total = Statistics.serverTotal(stat)

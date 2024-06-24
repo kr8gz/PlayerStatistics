@@ -9,10 +9,10 @@ loom {
     accessWidenerPath = getRootProject().file("src/main/resources/playerstatistics.accesswidener")
     serverOnlyMinecraftJar()
 
-    runConfigs.configureEach {
-        ideConfigGenerated true // Run configurations are not created for subprojects by default
-        runDir "../../run" // Use a shared run folder and just create separate worlds
-    }
+    // runConfigs.configureEach {
+    //     ideConfigGenerated true // Run configurations are not created for subprojects by default
+    //     runDir "../../run" // Use a shared run folder and just create separate worlds
+    // }
 }
 
 def modName = property('mod.name').toString()
@@ -79,13 +79,14 @@ processResources {
 
 // Collect builds into one directory per mod version
 tasks.register("collectJars", Copy) {
-    group = "build"
+    group = 'build'
     from remapJar.archiveFile
-    into rootProject.layout.buildDirectory.file("libs/$modVersion")
+    // from remapSourcesJar.archiveFile
+    into rootProject.layout.buildDirectory.dir("libs/$modVersion")
 }
 
 build {
-    finalizedBy "collectJars"
+    finalizedBy 'collectJars'
 }
 
 // Env configuration
@@ -93,43 +94,41 @@ stonecutter {
     def java21 = mcVersion >= "1.20.5"
     java {
         withSourcesJar()
-        sourceCompatibility = java21 ? JavaVersion.VERSION_21 : JavaVersion.VERSION_17
-        targetCompatibility = java21 ? JavaVersion.VERSION_21 : JavaVersion.VERSION_17
+        sourceCompatibility = targetCompatibility = java21 ? JavaVersion.VERSION_21 : JavaVersion.VERSION_17
     }
     kotlin {
-        jvmToolchain(java21 ? 21 : 17)
+        jvmToolchain java21 ? 21 : 17
     }
 }
 
 jar {
-    from("LICENSE") {
-        rename { "${it}_$archivesBaseName"}
+    from('LICENSE') {
+        rename { "${it}_$archivesBaseName" }
     }
 }
 
 publishMods {
-    type = BETA
+    def releaseType = providers.environmentVariable 'RELEASE_TYPE'
+    type = me.modmuss50.mpp.ReleaseType.of(releaseType.getOrElse('stable'))
 
-    modLoaders.add("fabric")
-    file = remapJar.archiveFile
-    additionalFiles.from(remapSourcesJar.archiveFile)
+    modLoaders.add 'fabric'
     displayName = "$modName $modVersion"
-    changelog = rootProject.file("CHANGELOG.md").text
+    changelog = rootProject.file('CHANGELOG.md').text
 
+    file = remapJar.archiveFile
+    additionalFiles.from remapSourcesJar.archiveFile
 
     modrinth {
         projectId = 'PztDP6Mf'
-        accessToken = providers.environmentVariable('MODRINTH_TOKEN')
+        accessToken = providers.environmentVariable 'MODRINTH_TOKEN'
         dryRun = accessToken.getOrNull() == null
 
-        def min = property('deps.minecraft.min')
-        def max = property('deps.minecraft.max')
+        def min = property('deps.minecraft.min').toString()
+        def max = property('deps.minecraft.max').toString()
 
         if (min == max) minecraftVersions.add(min)
         else minecraftVersionRange { start = min; end = max }
 
-        requires 'fabric-api'
-        requires 'fabric-language-kotlin'
-        requires 'sqlite-jdbc'
+        requires 'fabric-api', 'fabric-language-kotlin', 'sqlite-jdbc'
     }
 }

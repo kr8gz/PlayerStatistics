@@ -1,12 +1,16 @@
 plugins.apply "dev.kikugie.stonecutter"
-stonecutter.active "1.20.3" /* [SC] DO NOT EDIT */
+stonecutter.active "1.21" /* [SC] DO NOT EDIT */
 
-stonecutter.registerChiseled tasks.register("buildAll", stonecutter.chiseled) {
-    setGroup "project"
-    ofTask "build"
+stonecutter.registerChiseled tasks.register('buildAll', stonecutter.chiseled) {
+    group = 'project'
+    ofTask 'build'
 }
 
-stonecutter.registerChiseled tasks.register("publishAll", stonecutter.chiseled) {
-    setGroup "project"
-    ofTask "publishMods"
+stonecutter.registerChiseled tasks.register('publishAll', stonecutter.chiseled) {
+    group = 'project'
+    ofTask 'publishMods'
+}
+
+stonecutter.configureEach {
+    dependency('silk', project.property('deps.silk'))
 }
