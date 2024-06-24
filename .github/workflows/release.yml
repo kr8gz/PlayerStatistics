@@ -47,7 +47,7 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ env.MOD_VERSION }}
-          name: Release ${{ env.MOD_VERSION }}
+          name: Player Statistics ${{ env.MOD_VERSION }}
           prerelease: ${{ inputs.release_type != 'Stable' }}
           body_path: CHANGELOG.md
           files: build/libs/${{ env.MOD_VERSION }}/*.jar
