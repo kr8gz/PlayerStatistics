@@ -7,7 +7,7 @@
   "playerstatistics.command.page.next": "Следующая страница",
   "playerstatistics.command.page.previous": "Предыдущая страница",
   "playerstatistics.command.share": "Поделиться",
-  "playerstatistics.command.share.already_shared": "Эти результаты уже были опубликованы!",
+  "playerstatistics.command.share.already_shared": "Вы уже поделились этими результатами!",
   "playerstatistics.command.share.hint": "Поделиться этими результатами в чате!",
   "playerstatistics.command.share.hover": "Посмотреть",
   "playerstatistics.command.share.message": "%s поделился %s",
