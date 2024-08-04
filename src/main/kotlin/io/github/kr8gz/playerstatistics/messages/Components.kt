@@ -17,10 +17,10 @@ object Components {
     }
 
     fun pageFooter(page: Int, maxPage: Int, shareCode: UUID): Text = literalText {
-        fun dashes(count: Int) = literalText("-".repeat(count)) { color = config.colors.listOutput.footer.main }
+        fun dashes(count: Int) = literalText("-".repeat(count)) { color = config.colors.footer.main }
 
         fun pageButton(text: String, active: Boolean, newPage: Int, translationKey: String) = text(text) {
-            color = config.colors.listOutput.footer.altIf(active)
+            color = config.colors.footer.altIf(active)
             if (active) {
                 hoverEvent = HoverEvent(HoverEvent.Action.SHOW_TEXT, Text.translatable(translationKey))
                 clickEvent = ClickEvent(ClickEvent.Action.RUN_COMMAND, PageCommand.formatCommand(newPage))
@@ -30,8 +30,8 @@ object Components {
         text(dashes(7))
         pageButton(" ◀ [ ", active = page > 1, newPage = page - 1, "playerstatistics.command.page.previous")
         text(Text.translatable("playerstatistics.command.page",
-            literalText(page.coerceAtMost(maxPage).toString()) { color = config.colors.listOutput.pageNumbers.alt },
-            literalText(maxPage.toString()) { color = config.colors.listOutput.pageNumbers.main },
+            literalText(page.coerceAtMost(maxPage).toString()) { color = config.colors.pageNumber.alt },
+            literalText(maxPage.toString()) { color = config.colors.pageNumber.main },
         ))
         pageButton(" ] ▶ ", active = page < maxPage, newPage = page + 1, "playerstatistics.command.page.next")
         text(dashes(2) space shareButton(shareCode) space dashes(7))

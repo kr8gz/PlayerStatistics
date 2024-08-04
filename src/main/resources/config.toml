@@ -11,39 +11,34 @@
 # 3. TOML inline table
 #     example = { main = 0x123456, alt = 0xABCDEF }
 #
-# Unless stated otherwise by comments, main is the default color and alt is used for highlighting.
-# Happy customizing!
+# Unless stated otherwise by comments, `main` is the default color and `alt` is
+# used for highlighting. If no `main` or `alt` is specified, then only a single
+# color is supported. Happy customizing!
 
 # General text, leaderboard labels etc.
 text = { main = 0xAAAAAA, alt = 0xFFFFFF }
+# Extra characters used for formatting, such as » and -
+extra = { main = 0x555555, alt = 0xAAAAAA }
 
 # Player ranks
 rank = { main = 0xFFAA00, alt = 0x55FF55 }
-
 # Player and statistic names in lists
 name = { main = 0xFFFF00, alt = 0xFFFFFF }
 
 # Statistic values
 value = { main = 0x99BBFF, alt = 0xBBDDFF }
-
 # Heart color, used for damage statistics
-heart = 0xFF5555 # Supports single color only
+heart = 0xFF5555
+
+# Footer dashes and inactive page buttons
+footer.main = 0xAAAAAA
+# Page display text and active page buttons
+footer.alt = 0xFFFFFF
+# Current page will be displayed in alt color
+pageNumber.main = 0xBBDDFF
 
 # Action elements such as [Share] and [Hover]
-action = 0x55FF55 # Supports single color only
-
-# Additional colors used in list outputs
-[colors.listOutput]
-# Extra characters used for formatting, such as » and -
-extra = { main = 0x555555, alt = 0xAAAAAA }
-
-# Dashes and inactive page buttons
-footer.main = 0xAAAAAA
-# Page text and active page buttons
-footer.alt = 0xFFFFFF
-
-# Current page will be displayed in alt color
-pageNumbers.main = 0xBBDDFF
+action = 0x55FF55
 
 # Used when there are no results to display
-noData = 0xFF5555 # Supports single color only
+noData = 0xFF5555

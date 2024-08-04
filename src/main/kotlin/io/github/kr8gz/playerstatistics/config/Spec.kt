@@ -11,17 +11,17 @@ data class ColorPair(val main: Color, val alt: Color = main) {
 
 data class ColorConfig(
     val text: ColorPair,
+    val extra: ColorPair,
+
     val rank: ColorPair,
     val name: ColorPair,
+
     val value: ColorPair,
     val heart: Color,
+
+    val footer: ColorPair,
+    val pageNumber: ColorPair,
+
     val action: Color,
-    val listOutput: ListOutputConfig,
-) {
-    data class ListOutputConfig(
-        val extra: ColorPair,
-        val footer: ColorPair,
-        val pageNumbers: ColorPair,
-        val noData: Color,
-    )
-}
+    val noData: Color,
+)

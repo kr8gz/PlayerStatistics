@@ -42,13 +42,13 @@ object LeaderboardCommand : StatsCommand("leaderboard") {
             when (leaderboard) {
                 null -> {
                     newLine()
-                    text(Exceptions.NO_DATA.getMessage()) { color = config.colors.listOutput.noData }
+                    text(Exceptions.NO_DATA.getMessage()) { color = config.colors.noData }
                 }
                 else -> for ((rank, player, value) in leaderboard.pageEntries) text {
                     val highlightedPlayer = player == highlightedName
 
                     bold = highlightedPlayer
-                    color = config.colors.listOutput.extra.altIf(highlightedPlayer)
+                    color = config.colors.extra.altIf(highlightedPlayer)
 
                     newLine()
                     text(" » ") { bold = false }

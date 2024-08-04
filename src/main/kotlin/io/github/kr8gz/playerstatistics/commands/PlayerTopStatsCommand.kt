@@ -37,7 +37,7 @@ object PlayerTopStatsCommand : StatsCommand("top") {
             text(label.copy()) { bold = true }
             leaderboard.pageEntries.forEach { (rank, stat, value) ->
                 val statFormatter = StatFormatter(stat)
-                color = config.colors.listOutput.extra.main
+                color = config.colors.extra.main
 
                 newLine()
                 text(" » "); text(Text.translatable("playerstatistics.command.top.rank", rank)) { color = config.colors.rank.main }
