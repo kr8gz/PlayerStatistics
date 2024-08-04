@@ -1,9 +1,9 @@
 package io.github.kr8gz.playerstatistics.commands
 
+import io.github.kr8gz.playerstatistics.config.config
 import io.github.kr8gz.playerstatistics.extensions.ServerCommandSource.uuid
 import io.github.kr8gz.playerstatistics.extensions.Text.build
 import io.github.kr8gz.playerstatistics.extensions.Text.space
-import io.github.kr8gz.playerstatistics.messages.Colors
 import net.minecraft.server.command.ServerCommandSource
 import net.minecraft.text.HoverEvent
 import net.minecraft.text.Text
@@ -47,12 +47,12 @@ object ShareCommand : StatsCommand("share") {
         if (data.shared) throw Exceptions.ALREADY_SHARED.create()
 
         val message = run {
-            val sharerName = (entity?.displayName ?: literalText(name)).build { color = Colors.WHITE }
-            Text.translatable("playerstatistics.command.share.message", sharerName, data.label).build { color = Colors.GRAY }
+            val sharerName = (entity?.displayName ?: literalText(name)).build { color = config.colors.text.alt }
+            Text.translatable("playerstatistics.command.share.message", sharerName, data.label).build { color = config.colors.text.main }
         }
         val hoverText = Texts.bracketed(Text.translatable("playerstatistics.command.share.hover")).build {
             hoverEvent = HoverEvent(HoverEvent.Action.SHOW_TEXT, data.content)
-            color = Colors.GREEN
+            color = config.colors.action
         }
         server.broadcastText(message space hoverText)
 

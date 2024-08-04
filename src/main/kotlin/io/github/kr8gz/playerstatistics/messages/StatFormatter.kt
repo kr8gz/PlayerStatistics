@@ -1,5 +1,6 @@
 package io.github.kr8gz.playerstatistics.messages
 
+import io.github.kr8gz.playerstatistics.config.config
 import io.github.kr8gz.playerstatistics.extensions.Identifier.toShortString
 import io.github.kr8gz.playerstatistics.extensions.StatType.identifier
 import io.github.kr8gz.playerstatistics.extensions.Text.build
@@ -67,7 +68,7 @@ class StatFormatter<T>(private val stat: Stat<T>) {
 
             StatFormatter.DIVIDE_BY_TEN -> { value ->
                 literalText(formatNumber(value / 20.0)) {
-                    text(" ❤") { color = Colors.RED; bold = false }
+                    text(" ❤") { color = config.colors.heart; bold = false }
                     val hoverText = Text.translatable("playerstatistics.unit.damage", formatNumber(value / 10.0))
                     hoverEvent = HoverEvent(HoverEvent.Action.SHOW_TEXT, hoverText)
                 }

@@ -54,6 +54,14 @@ dependencies {
 
     // Translations
     include modImplementation("xyz.nucleoid:server-translations-api:${property('deps.server_translations')}")
+
+    // Config
+    include implementation("com.sksamuel.hoplite:hoplite-core:${property('deps.hoplite')}")
+    include implementation("com.sksamuel.hoplite:hoplite-watch:${property('deps.hoplite')}")
+    include implementation("com.sksamuel.hoplite:hoplite-toml:${property('deps.hoplite')}")
+    include implementation('org.tomlj:tomlj:1.1.0')
+    include implementation('org.antlr:antlr4-runtime:4.11.1')
+    include implementation('org.checkerframework:checker-qual:3.21.2')
 }
 
 def targetMCVersions() {

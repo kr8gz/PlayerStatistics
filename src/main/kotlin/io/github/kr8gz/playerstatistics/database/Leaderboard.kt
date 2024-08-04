@@ -46,7 +46,7 @@ class Leaderboard<T>(val pageEntries: List<Entry<T>>, val pageCount: Int) {
         }
 
         /** @return key = player name */
-        suspend fun forStat(stat: Stat<*>, highlightName: String? = null, page: Int): Leaderboard<String>? = coroutineScope {
+        suspend fun forStat(stat: Stat<*>, highlightedName: String? = null, page: Int): Leaderboard<String>? = coroutineScope {
             Database.prepareStatement("""
                 WITH leaderboard AS (
                     SELECT *, ROW_NUMBER() OVER (ORDER BY $rank, ${Statistics.player}) pos
@@ -68,7 +68,7 @@ class Leaderboard<T>(val pageEntries: List<Entry<T>>, val pageCount: Int) {
                 ORDER BY pos
             """).run {
                 setString(1, stat.name)
-                setString(2, highlightName)
+                setString(2, highlightedName)
                 executeQuery()
             }.generateLeaderboard {
                 Entry(getInt(rank), getString(Players.name), getInt(Statistics.value))

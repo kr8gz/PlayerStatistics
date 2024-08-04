@@ -52,7 +52,7 @@ object Database {
 
             private val listeners = mutableListOf<suspend Statement.() -> Unit>()
 
-            fun run(server: MinecraftServer) {
+            fun start(server: MinecraftServer) {
                 URL = server.getSavePath(WorldSavePath.ROOT)
                     .resolve("${PlayerStatistics.MOD_NAME}.db").toFile()
                     .let { "jdbc:sqlite:$it?foreign_keys=on" }

@@ -2,12 +2,12 @@ package io.github.kr8gz.playerstatistics.commands
 
 import io.github.kr8gz.playerstatistics.commands.PageCommand.registerPageAction
 import io.github.kr8gz.playerstatistics.commands.ShareCommand.storeShareData
+import io.github.kr8gz.playerstatistics.config.config
 import io.github.kr8gz.playerstatistics.database.Leaderboard
 import io.github.kr8gz.playerstatistics.database.Players
 import io.github.kr8gz.playerstatistics.extensions.ServerCommandSource.sendFeedback
 import io.github.kr8gz.playerstatistics.extensions.Text.build
 import io.github.kr8gz.playerstatistics.extensions.Text.newLine
-import io.github.kr8gz.playerstatistics.messages.Colors
 import io.github.kr8gz.playerstatistics.messages.Components
 import io.github.kr8gz.playerstatistics.messages.StatFormatter
 import net.minecraft.server.command.ServerCommandSource
@@ -31,18 +31,18 @@ object PlayerTopStatsCommand : StatsCommand("top") {
 
         val label = run {
             val player = Players.fixName(playerName) ?: playerName
-            Text.translatable("playerstatistics.command.top", player).build { color = Colors.WHITE }
+            Text.translatable("playerstatistics.command.top", player).build { color = config.colors.text.alt }
         }
         val content = literalText {
             text(label.copy()) { bold = true }
             leaderboard.pageEntries.forEach { (rank, stat, value) ->
                 val statFormatter = StatFormatter(stat)
-                color = Colors.DARK_GRAY
+                color = config.colors.listOutput.extra.main
 
                 newLine()
-                text(" » "); text(Text.translatable("playerstatistics.command.top.rank", rank)) { color = Colors.GOLD }
-                text(" ");   text(LeaderboardCommand.formatStatNameWithSuggestion(statFormatter)) { color = Colors.YELLOW }
-                text(" - "); text(statFormatter.formatValue(value)) { color = Colors.VALUE }
+                text(" » "); text(Text.translatable("playerstatistics.command.top.rank", rank)) { color = config.colors.rank.main }
+                text(" ");   text(LeaderboardCommand.formatStatNameWithSuggestion(statFormatter)) { color = config.colors.name.main }
+                text(" - "); text(statFormatter.formatValue(value)) { color = config.colors.value.main }
             }
         }
 

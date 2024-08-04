@@ -1,6 +1,7 @@
 package io.github.kr8gz.playerstatistics.commands
 
 import io.github.kr8gz.playerstatistics.commands.ShareCommand.storeShareData
+import io.github.kr8gz.playerstatistics.config.config
 import io.github.kr8gz.playerstatistics.database.Leaderboard
 import io.github.kr8gz.playerstatistics.database.Statistics
 import io.github.kr8gz.playerstatistics.extensions.ServerCommandSource.sendFeedback
@@ -26,27 +27,27 @@ object ServerTotalCommand : StatsCommand("total") {
         }
     }
 
-    private suspend fun ServerCommandSource.sendServerTotal(stat: Stat<*>, highlightName: String?) {
+    private suspend fun ServerCommandSource.sendServerTotal(stat: Stat<*>, highlightedName: String?) {
         val statFormatter = StatFormatter(stat)
 
         val label = run {
-            val statName = LeaderboardCommand.formatStatNameWithSuggestion(statFormatter).build { color = Colors.WHITE }
-            Text.translatable("playerstatistics.command.total", statName).build { color = Colors.GRAY }
+            val statName = LeaderboardCommand.formatStatNameWithSuggestion(statFormatter).build { color = config.colors.text.alt }
+            Text.translatable("playerstatistics.command.total", statName).build { color = config.colors.text.main }
         }
         val content = label.build {
             val total = Statistics.serverTotal(stat)
-            text(": "); text(statFormatter.formatValue(total)) { color = Colors.VALUE_HIGHLIGHT }
+            text(": "); text(statFormatter.formatValue(total)) { color = config.colors.value.alt }
 
-            if (total > 0) highlightName?.let { Leaderboard.Entry(stat, it) }?.let { (_, name, value) ->
+            if (total > 0) highlightedName?.let { Leaderboard.Entry(stat, it) }?.let { (_, name, value) ->
                 newLine()
-                val formattedName = literalText(name) { color = Colors.WHITE }
-                val contributed = statFormatter.formatValue(value).build { color = Colors.VALUE_HIGHLIGHT }
+                val formattedName = literalText(name) { color = config.colors.text.alt }
+                val contributed = statFormatter.formatValue(value).build { color = config.colors.value.alt }
                 text(Text.translatable("playerstatistics.command.total.contributed", formattedName, contributed) space literalText {
                     text("(")
                     val percentage = formatNumber(value.toFloat() / total * 100)
-                    text("$percentage%") { color = Colors.VALUE }
+                    text("$percentage%") { color = config.colors.value.main }
                     text(")")
-                }) { color = Colors.GRAY }
+                }) { color = config.colors.text.main }
             }
         }
 
