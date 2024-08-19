@@ -64,6 +64,7 @@ Other players will be able to see what you shared by hovering over the green `[H
 
 ![Sharing example](gallery/sharing.png)
 
+> [!TIP]
 > <details>
 > <summary>Advanced usage examples</summary>
 > 
