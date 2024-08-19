@@ -30,7 +30,7 @@ val config by object {
     }
 
     val configLoader = try {
-        val loader = ConfigLoader { addPathSource(RUNTIME_PATH) }
+        val loader = ConfigLoader { addPathSource(RUNTIME_PATH); strict() }
         ReloadableConfig(loader, Config::class).apply {
             addWatcher(FileWatcher(RUNTIME_PATH.parent.toString()))
             subscribe { PlayerStatistics.LOGGER.info("Reloaded config") }

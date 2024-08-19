@@ -9,12 +9,12 @@ Download this mod along with its dependencies and put them in your server's mods
 There is **no additional setup required**, regardless of how long your server's world has existed!
 When starting the server with this mod for the first time, a database will be initialized using existing player statistics files.
 
-<details>
-<summary>Note about player names</summary>
-Player names are initially obtained through the user cache (the <code>usercache.json</code> file in the server folder).
-This means that only the most recently used (by default) 1,000 player names can be inserted into the database on initialization.
-Missing player names will be updated when the affected players rejoin your server.
-</details>
+> <details>
+> <summary>Note about player names</summary>
+> Player names are initially obtained through the user cache (the <code>usercache.json</code> file in the server folder).
+> This means that only the most recently used (by default) 1,000 player names can be inserted into the database on initialization.
+> Missing player names will be updated when the affected players rejoin your server.
+> </details>
 
 ## Features
 Thanks to database queries, data can be retrieved lightning fast! Additionally, all queries are run **asynchronously**
@@ -64,24 +64,32 @@ Other players will be able to see what you shared by hovering over the green `[H
 
 ![Sharing example](gallery/sharing.png)
 
-<details>
-<summary>Advanced usage examples</summary>
+> <details>
+> <summary>Advanced usage examples</summary>
+> 
+> ### Random statistics
+> Instead of specifying a statistic, you can also let the mod choose one for you:
+>
+> ![Random leaderboard](gallery/random-leaderboard.png)
+> 
+> ### Precise values
+> Hovering over certain types of values will show them in more precise units:
+> 
+> ![Example of precise value in hover text](gallery/hover-value.png)
+> 
+> ### Remove highlight
+> You can create command output without any highlight by specifying a non-existent player name, such as `-`:
+> 
+> ![Example leaderboard without highlight](gallery/remove-highlight.png)
+> </details>
 
-### Random statistics
-Instead of specifying a statistic, you can also let the mod choose one for you:
+### Configuration and customization
+When you launch your server, a configuration file will be generated at
+[`config/PlayerStatistics.toml`](src/main/resources/config.toml).
+The file contains comments with additional information on individual settings to guide you through all available options.
 
-![Random leaderboard](gallery/random-leaderboard.png)
-
-### Precise values
-Hovering over certain types of values will show them in more precise units:
-
-![Example of precise value in hover text](gallery/hover-value.png)
-
-### Remove highlight
-You can create command output without any highlight by specifying a non-existent player name, such as `-`:
-
-![Example leaderboard without highlight](gallery/remove-highlight.png)
-</details>
+Tip: If your configuration file contains errors that you cannot fix,
+you can also delete it to let it regenerate from the template.
 
 ### Localization
 Server-side translations are provided for all elements of this mod &mdash;
