@@ -8,8 +8,8 @@ import io.github.kr8gz.playerstatistics.database.Players
 import io.github.kr8gz.playerstatistics.extensions.ServerCommandSource.sendFeedback
 import io.github.kr8gz.playerstatistics.extensions.Text.build
 import io.github.kr8gz.playerstatistics.extensions.Text.newLine
-import io.github.kr8gz.playerstatistics.extensions.Text.space
 import io.github.kr8gz.playerstatistics.messages.Components
+import io.github.kr8gz.playerstatistics.messages.Components.withPageDisplay
 import io.github.kr8gz.playerstatistics.messages.StatFormatter
 import net.minecraft.server.command.ServerCommandSource
 import net.minecraft.text.Text
@@ -47,11 +47,11 @@ object PlayerTopStatsCommand : StatsCommand("top") {
             }
         }
 
-        val header = label.build { bold = true } space Components.posDisplay(page, leaderboard.pageCount) // TODO use pos/maxPos instead of pages
-        val content = header newLine Texts.join(entries, literalText("\n"))
-        val shareCode = storeShareData(label, content)
+        val header = label.build { bold = true }
+        val content = Texts.join(entries, literalText("\n"))
+        val shareCode = storeShareData(label, header.withPageDisplay(page, leaderboard.pageCount) newLine content)
 
-        sendFeedback { content newLine Components.pageFooter(page, leaderboard.pageCount, shareCode) }
+        sendFeedback { header newLine content newLine Components.pageFooter(page, leaderboard.pageCount, shareCode) }
         registerPageAction(max = leaderboard.pageCount) { newPage -> sendPlayerTopStats(playerName, newPage) }
     }
 }

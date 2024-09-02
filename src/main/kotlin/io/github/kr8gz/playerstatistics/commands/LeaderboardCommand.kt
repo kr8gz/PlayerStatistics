@@ -9,6 +9,7 @@ import io.github.kr8gz.playerstatistics.extensions.Text.build
 import io.github.kr8gz.playerstatistics.extensions.Text.newLine
 import io.github.kr8gz.playerstatistics.extensions.Text.space
 import io.github.kr8gz.playerstatistics.messages.Components
+import io.github.kr8gz.playerstatistics.messages.Components.withPageDisplay
 import io.github.kr8gz.playerstatistics.messages.StatFormatter
 import net.minecraft.server.command.ServerCommandSource
 import net.minecraft.stat.Stat
@@ -80,11 +81,10 @@ object LeaderboardCommand : StatsCommand("leaderboard") {
             }
         }
 
-        val header = label space Components.posDisplay(page, leaderboard.pageCount) // TODO use pos/maxPos instead of pages
-        val content = header newLine Texts.join(entries, literalText("\n"))
-        val shareCode = storeShareData(label, content)
+        val content = Texts.join(entries, literalText("\n"))
+        val shareCode = storeShareData(label, label.withPageDisplay(page, leaderboard.pageCount) newLine content)
 
-        sendFeedback { content newLine Components.pageFooter(page, leaderboard.pageCount, shareCode) }
+        sendFeedback { label newLine content newLine Components.pageFooter(page, leaderboard.pageCount, shareCode) }
         registerPageAction(max = leaderboard.pageCount) { newPage -> sendLeaderboard(stat, highlightedName, newPage) }
     }
 

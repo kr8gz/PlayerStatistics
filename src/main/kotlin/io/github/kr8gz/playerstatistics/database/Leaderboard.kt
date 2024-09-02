@@ -8,8 +8,8 @@ class Leaderboard<T>(val pageEntries: List<Entry<T>>, val pageCount: Int) {
     data class Entry<T>(val pos: Int, val rank: Int, val key: T, val value: Int)
 
     companion object : Database.View("ranked_statistics") {
-        private const val pos = "pos"
         private const val rank = "rank"
+        private const val pos = "pos"
         private const val pageCount = "page_count"
 
         override val definition = with(Statistics) { """
@@ -17,7 +17,7 @@ class Leaderboard<T>(val pageEntries: List<Entry<T>>, val pageCount: Int) {
             FROM $Statistics
         """ }
 
-        /** Default chat size = 10, minus rows for header and footer */
+        /** Default chat height = 10, minus rows for header and footer */
         const val pageSize = 8
 
         private inline fun <T> ResultSet.generateLeaderboard(crossinline entryBuilder: ResultSet.() -> Entry<T>?): Leaderboard<T>? {

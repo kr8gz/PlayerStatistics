@@ -37,12 +37,14 @@ object Components {
         text(dashes(2) space shareButton(shareCode) space dashes(7))
     }
 
-    fun posDisplay(pos: Int, max: Int): Text = literalText {
-        text("(")
-        text(pos.toString()) { color = config.colors.pageNumber.alt }
-        text("/")
-        text(max.toString()) { color = config.colors.pageNumber.main }
-        text(")")
-        color = config.colors.text.main
+    fun Text.withPageDisplay(page: Int, maxPage: Int): Text {
+        return if (maxPage <= 1) this else this space literalText {
+            text("(")
+            text(page.coerceAtMost(maxPage).toString()) { color = config.colors.pageNumber.alt }
+            text("/")
+            text(maxPage.toString()) { color = config.colors.pageNumber.main }
+            text(")")
+            color = config.colors.text.main
+        }
     }
 }
