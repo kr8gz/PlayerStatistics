@@ -7,7 +7,7 @@ import net.silkmc.silk.commands.LiteralCommandBuilder
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
 
-private typealias PageAction = suspend ServerCommandSource.(page: Int) -> Unit
+private typealias PageAction = suspend ServerCommandSource.(newPage: Int) -> Unit
 
 object PageCommand : StatsCommand("page") {
     override fun LiteralCommandBuilder<ServerCommandSource>.build() {

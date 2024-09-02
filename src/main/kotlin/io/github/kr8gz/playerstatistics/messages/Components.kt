@@ -36,4 +36,13 @@ object Components {
         pageButton(" ] ▶ ", active = page < maxPage, newPage = page + 1, "playerstatistics.command.page.next")
         text(dashes(2) space shareButton(shareCode) space dashes(7))
     }
+
+    fun posDisplay(pos: Int, max: Int): Text = literalText {
+        text("(")
+        text(pos.toString()) { color = config.colors.pageNumber.alt }
+        text("/")
+        text(max.toString()) { color = config.colors.pageNumber.main }
+        text(")")
+        color = config.colors.text.main
+    }
 }

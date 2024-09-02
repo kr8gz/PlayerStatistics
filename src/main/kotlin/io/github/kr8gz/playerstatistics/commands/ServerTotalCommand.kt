@@ -2,7 +2,7 @@ package io.github.kr8gz.playerstatistics.commands
 
 import io.github.kr8gz.playerstatistics.commands.ShareCommand.storeShareData
 import io.github.kr8gz.playerstatistics.config.config
-import io.github.kr8gz.playerstatistics.database.Leaderboard
+import io.github.kr8gz.playerstatistics.database.Players
 import io.github.kr8gz.playerstatistics.database.Statistics
 import io.github.kr8gz.playerstatistics.extensions.ServerCommandSource.sendFeedback
 import io.github.kr8gz.playerstatistics.extensions.Text.build
@@ -34,26 +34,24 @@ object ServerTotalCommand : StatsCommand("total") {
             val statName = LeaderboardCommand.formatStatNameWithSuggestion(statFormatter).build { color = config.colors.text.alt }
             Text.translatable("playerstatistics.command.total", statName).build { color = config.colors.text.main }
         }
+
         val content = label.build {
             val total = Statistics.serverTotal(stat)
             text(": "); text(statFormatter.formatValue(total)) { color = config.colors.value.alt }
 
-            if (total > 0) highlightedName?.let { Leaderboard.Entry(stat, it) }?.let { (_, name, value) ->
+            if (total > 0) highlightedName?.let { Statistics.singleValue(stat, it) }?.let { value ->
                 newLine()
-                val formattedName = literalText(name) { color = config.colors.text.alt }
+                val formattedName = literalText(Players.fixName(highlightedName)) { color = config.colors.text.alt }
                 val contributed = statFormatter.formatValue(value).build { color = config.colors.value.alt }
-                text(Text.translatable("playerstatistics.command.total.contributed", formattedName, contributed) space literalText {
-                    text("(")
+                text(Text.translatable("playerstatistics.command.total.contributed", formattedName, contributed)) {
                     val percentage = formatNumber(value.toFloat() / total * 100)
-                    text("$percentage%") { color = config.colors.value.main }
-                    text(")")
-                }) { color = config.colors.text.main }
+                    text(" ("); text("$percentage%") { color = config.colors.value.main }; text(")")
+                    color = config.colors.text.main
+                }
             }
         }
 
-        sendFeedback {
-            val shareCode = storeShareData(label, content)
-            content space Components.shareButton(shareCode)
-        }
+        val shareCode = storeShareData(label, content)
+        sendFeedback { content space Components.shareButton(shareCode) }
     }
 }

@@ -68,4 +68,17 @@ object Statistics : Database.Table("statistics") {
             .run { setString(1, stat.name); executeQuery() }
             .use { rs -> rs.next(); rs.getLong(sum) }
     }
+
+    suspend fun singleValue(stat: Stat<*>, playerName: String): Int? = coroutineScope {
+        Database.prepareStatement("""
+            SELECT $value
+            FROM $Players
+            LEFT JOIN $Leaderboard ON ${Players.uuid} = $player AND ${Statistics.stat} = ?
+            WHERE ${Players.name} = ?
+        """).run {
+            setString(1, stat.name)
+            setString(2, playerName)
+            executeQuery()
+        }.use { rs -> rs.takeIf { it.next() }?.getInt(value) }
+    }
 }
