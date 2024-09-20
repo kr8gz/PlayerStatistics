@@ -39,15 +39,17 @@ object ServerTotalCommand : StatsCommand("total") {
             val total = Statistics.serverTotal(stat)
             text(": "); text(statFormatter.formatValue(total)) { color = config.colors.value.alt }
 
-            if (total > 0) highlightedName?.let { Statistics.singleValue(stat, it) }?.let { value ->
-                newLine()
-                val formattedName = literalText(Players.fixName(highlightedName)) { color = config.colors.text.alt }
-                val contributed = statFormatter.formatValue(value).build { color = config.colors.value.alt }
-                text(Text.translatable("playerstatistics.command.total.contributed", formattedName, contributed)) {
-                    val percentage = formatNumber(value.toFloat() / total * 100)
-                    text(" ("); text("$percentage%") { color = config.colors.value.main }; text(")")
-                    color = config.colors.text.main
-                }
+            if (total == 0L || highlightedName == null) return@build
+            val name = Players.fixName(highlightedName) ?: return@build
+            val value = Statistics.singleValue(stat, name) ?: return@build
+
+            newLine()
+            val formattedName = literalText(name) { color = config.colors.text.alt }
+            val contributed = statFormatter.formatValue(value).build { color = config.colors.value.alt }
+            text(Text.translatable("playerstatistics.command.total.contributed", formattedName, contributed)) {
+                val percentage = formatNumber(value.toFloat() / total * 100)
+                text(" ("); text("$percentage%") { color = config.colors.value.main }; text(")")
+                color = config.colors.text.main
             }
         }
 

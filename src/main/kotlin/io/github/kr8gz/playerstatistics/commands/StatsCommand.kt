@@ -49,7 +49,7 @@ abstract class StatsCommand(private val name: String) {
         }
     }
 
-    abstract fun LiteralCommandBuilder<ServerCommandSource>.build()
+    protected abstract fun LiteralCommandBuilder<ServerCommandSource>.build()
 
     protected enum class Exceptions(private val translationKey: String) : CommandExceptionType {
         NO_DATA("playerstatistics.no_data"),

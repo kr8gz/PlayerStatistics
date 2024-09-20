@@ -85,16 +85,14 @@ processResources {
     filesMatching("fabric.mod.json") { expand expandProperties }
 }
 
-// Collect builds into one directory per mod version
-tasks.register("collectJars", Copy) {
-    group = 'build'
-    from remapJar.archiveFile
-    // from remapSourcesJar.archiveFile
-    into rootProject.layout.buildDirectory.dir("libs/$modVersion")
-}
-
 build {
-    finalizedBy 'collectJars'
+    doLast {
+        // Collect builds into one directory per mod version
+        copy {
+            from remapJar.archiveFile
+            into rootProject.layout.buildDirectory.dir("libs/$modVersion")
+        }
+    }
 }
 
 // Env configuration
