@@ -4,6 +4,7 @@ import io.github.kr8gz.playerstatistics.commands.PageCommand.registerPageAction
 import io.github.kr8gz.playerstatistics.commands.ShareCommand.storeShareData
 import io.github.kr8gz.playerstatistics.config.config
 import io.github.kr8gz.playerstatistics.database.Leaderboard
+import io.github.kr8gz.playerstatistics.database.Players
 import io.github.kr8gz.playerstatistics.extensions.ServerCommandSource.sendFeedback
 import io.github.kr8gz.playerstatistics.extensions.Text.build
 import io.github.kr8gz.playerstatistics.extensions.Text.newLine
@@ -43,19 +44,21 @@ object LeaderboardCommand : StatsCommand("leaderboard") {
             return sendFeedback { content space Components.shareButton(shareCode) }
         }
 
+        val highlightedPlayer = highlightedName?.let { Players.fixName(it) }
+
         val entries = leaderboard.pageEntries.map { (pos, rank, player, value) ->
             literalText {
-                val highlightedPlayer = player == highlightedName
-                bold = highlightedPlayer
-                color = config.colors.extra.altIf(highlightedPlayer)
+                val isHighlighted = player == highlightedPlayer
+                bold = isHighlighted
+                color = config.colors.extra.altIf(isHighlighted)
 
                 text(" » ") { bold = false }
-                text("$rank. ") { color = config.colors.rank.altIf(highlightedPlayer) }
+                text("$rank. ") { color = config.colors.rank.altIf(isHighlighted) }
                 text(player) {
                     var hint: Text? = null
                     var command: String? = null
 
-                    if (highlightedPlayer) {
+                    if (isHighlighted) {
                         val targetPage = 1 + (pos - 2) / (Leaderboard.pageSize - 1)
                         // starting page               highlight on every page
                         // |                           |
@@ -74,10 +77,10 @@ object LeaderboardCommand : StatsCommand("leaderboard") {
 
                     hoverEvent = hint?.let { HoverEvent(HoverEvent.Action.SHOW_TEXT, it) }
                     clickEvent = command?.let { ClickEvent(ClickEvent.Action.RUN_COMMAND, it) }
-                    color = config.colors.name.altIf(highlightedPlayer)
+                    color = config.colors.name.altIf(isHighlighted)
                 }
                 text(" - ") { bold = false }
-                text(statFormatter.formatValue(value)) { color = config.colors.value.altIf(highlightedPlayer) }
+                text(statFormatter.formatValue(value)) { color = config.colors.value.altIf(isHighlighted) }
             }
         }
 

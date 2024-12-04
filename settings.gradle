@@ -17,7 +17,7 @@ plugins {
 
 stonecutter {
     shared {
-        versions '1.21', '1.20.5', '1.20.3', '1.20.2', '1.20'
+        versions '1.21.2', '1.21', '1.20.5', '1.20.3', '1.20.2', '1.20'
     }
 
     create rootProject

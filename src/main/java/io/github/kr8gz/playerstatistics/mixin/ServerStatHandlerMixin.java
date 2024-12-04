@@ -1,7 +1,7 @@
 package io.github.kr8gz.playerstatistics.mixin;
 
 import com.google.common.collect.ImmutableMap;
-import io.github.kr8gz.playerstatistics.access.ServerStatHandlerMixinAccess;
+import io.github.kr8gz.playerstatistics.access.ServerStatHandlerAccess;
 import io.github.kr8gz.playerstatistics.database.Statistics;
 import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
 import net.minecraft.entity.player.PlayerEntity;
@@ -17,7 +17,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import java.util.Map;
 
 @Mixin(ServerStatHandler.class)
-public abstract class ServerStatHandlerMixin extends StatHandler implements ServerStatHandlerMixinAccess {
+public abstract class ServerStatHandlerMixin extends StatHandler implements ServerStatHandlerAccess {
     @Unique private final Map<Stat<?>, Integer> changedStats = new Object2IntOpenHashMap<>();
 
     @Inject(method = "setStat", at = @At("TAIL"))

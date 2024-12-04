@@ -1,6 +1,6 @@
 package io.github.kr8gz.playerstatistics.extensions
 
-import io.github.kr8gz.playerstatistics.access.ServerStatHandlerMixinAccess
+import io.github.kr8gz.playerstatistics.access.ServerStatHandlerAccess
 import net.minecraft.stat.ServerStatHandler
 import net.minecraft.stat.Stat
 import org.apache.commons.io.FilenameUtils
@@ -13,6 +13,6 @@ object ServerStatHandler {
             .let(UUID::fromString)
 
     fun ServerStatHandler.takeChangedStats(): Map<Stat<*>, Int> {
-        return (this as ServerStatHandlerMixinAccess).takeChangedStats()
+        return (this as ServerStatHandlerAccess).takeChangedStats()
     }
 }
