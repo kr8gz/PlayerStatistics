@@ -8,17 +8,17 @@ import net.fabricmc.loader.api.FabricLoader
 import java.nio.file.Files
 import java.nio.file.StandardCopyOption
 
-val config by object {
-    val TEMPLATE_PATH = FabricLoader.getInstance()
+object ConfigLoader {
+    private val TEMPLATE_PATH = FabricLoader.getInstance()
         .getModContainer(PlayerStatistics.MOD_ID).get()
         .findPath("config.toml").get()
 
-    val RUNTIME_PATH = FabricLoader.getInstance()
+    private val RUNTIME_PATH = FabricLoader.getInstance()
         .configDir.resolve("${PlayerStatistics.MOD_NAME}.toml")
 
-    val ERROR_HINT = "Tip: You can delete the erroneous config file to let it automatically regenerate."
+    private const val ERROR_HINT = "Tip: You can delete the erroneous config file to let it automatically regenerate."
 
-    fun recreateConfig() {
+    private fun recreateConfig() {
         PlayerStatistics.LOGGER.info("(Re)creating config file from template")
         Files.copy(TEMPLATE_PATH, RUNTIME_PATH, StandardCopyOption.REPLACE_EXISTING)
     }
@@ -29,7 +29,7 @@ val config by object {
         }
     }
 
-    val configLoader = try {
+    private val loader = try {
         val loader = ConfigLoader { addPathSource(RUNTIME_PATH); strict() }
         ReloadableConfig(loader, Config::class).apply {
             addWatcher(FileWatcher(RUNTIME_PATH.parent.toString()))
@@ -46,5 +46,5 @@ val config by object {
         throw ConfigException("${e.message}\n\n    - $ERROR_HINT\n", e.cause)
     }
 
-    operator fun getValue(thisRef: Any?, property: Any?) = configLoader.getLatest()
+    fun getLatest() = loader.getLatest()
 }

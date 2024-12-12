@@ -1,5 +1,7 @@
 package io.github.kr8gz.playerstatistics.config
 
+val config get() = ConfigLoader.getLatest()
+
 data class Config(
     val colors: ColorConfig,
 )

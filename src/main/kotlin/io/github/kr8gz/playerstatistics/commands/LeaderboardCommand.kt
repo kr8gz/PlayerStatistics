@@ -9,21 +9,21 @@ import io.github.kr8gz.playerstatistics.extensions.ServerCommandSource.sendFeedb
 import io.github.kr8gz.playerstatistics.extensions.Text.build
 import io.github.kr8gz.playerstatistics.extensions.Text.newLine
 import io.github.kr8gz.playerstatistics.extensions.Text.space
-import io.github.kr8gz.playerstatistics.messages.Components
-import io.github.kr8gz.playerstatistics.messages.Components.withPageDisplay
-import io.github.kr8gz.playerstatistics.messages.StatFormatter
+import io.github.kr8gz.playerstatistics.format.Components
+import io.github.kr8gz.playerstatistics.format.Components.withPageDisplay
+import io.github.kr8gz.playerstatistics.util.ComputedStatSource
+import io.github.kr8gz.playerstatistics.util.StatSource
 import net.minecraft.server.command.ServerCommandSource
-import net.minecraft.stat.Stat
 import net.minecraft.text.*
 import net.silkmc.silk.commands.LiteralCommandBuilder
 import net.silkmc.silk.core.text.literalText
 
 object LeaderboardCommand : StatsCommand("leaderboard") {
     override fun LiteralCommandBuilder<ServerCommandSource>.build() {
-        statArgument { maybeStat ->
+        statArgument(ComputedStatSource.TOP_STATS) { maybeStat ->
             optionalPlayerArgument { maybePlayer ->
                 executes {
-                    val stat = maybeStat() ?: throw Exceptions.NO_DATA.create()
+                    val stat = maybeStat() ?: throw CommandExceptions.NO_DATA.create()
                     val player = maybePlayer() ?: source.player?.gameProfile?.name
                     usingDatabase { source.sendLeaderboard(stat, player) }
                 }
@@ -31,15 +31,14 @@ object LeaderboardCommand : StatsCommand("leaderboard") {
         }
     }
 
-    private suspend fun ServerCommandSource.sendLeaderboard(stat: Stat<*>, highlightedName: String?, page: Int = 1) {
-        val statFormatter = StatFormatter(stat)
+    private suspend fun ServerCommandSource.sendLeaderboard(stat: StatSource, highlightedName: String?, page: Int = 1) {
         val label = run {
-            val statName = statFormatter.name.build { color = config.colors.text.alt }
+            val statName = stat.formatNameText().build { color = config.colors.text.alt }
             Text.translatable("playerstatistics.command.leaderboard", statName).build { color = config.colors.text.main }
         }
 
         val leaderboard = Leaderboard.forStat(stat, highlightedName, page) ?: run {
-            val content = label newLine Exceptions.NO_DATA.getMessage().build { color = config.colors.noData }
+            val content = label newLine CommandExceptions.NO_DATA.getMessage().build { color = config.colors.noData }
             val shareCode = storeShareData(label, content)
             return sendFeedback { content space Components.shareButton(shareCode) }
         }
@@ -59,20 +58,19 @@ object LeaderboardCommand : StatsCommand("leaderboard") {
                     var command: String? = null
 
                     if (isHighlighted) {
+                        //         starting page           highlight on every page
+                        //               |                                       |
                         val targetPage = 1 + (pos - 2) / (Leaderboard.pageSize - 1)
-                        // starting page               highlight on every page
-                        // |                           |
-                        // 1 + (pos - 2) / (pageSize - 1)
-                        //            |
-                        //            -1 starting index
-                        //            -1 if highlight is at the end of a page, move it forward
+                        //                          |
+                        //                          -1 start with index 0
+                        //                          -1 if highlight is at the end of a page, move it forward
                         if (targetPage != page) {
                             hint = Text.translatable("playerstatistics.command.leaderboard.jump")
-                            command = PageCommand.formatCommand(targetPage)
+                            command = PageCommand.formatCommandString(targetPage)
                         }
                     } else {
                         hint = Text.translatable("playerstatistics.command.leaderboard.highlight")
-                        command = formatCommand(statFormatter.commandArguments, player)
+                        command = LeaderboardCommand.formatCommandString(stat.formatCommandArgs(), player)
                     }
 
                     hoverEvent = hint?.let { HoverEvent(HoverEvent.Action.SHOW_TEXT, it) }
@@ -80,7 +78,7 @@ object LeaderboardCommand : StatsCommand("leaderboard") {
                     color = config.colors.name.altIf(isHighlighted)
                 }
                 text(" - ") { bold = false }
-                text(statFormatter.formatValue(value)) { color = config.colors.value.altIf(isHighlighted) }
+                text(stat.formatValueText(value)) { color = config.colors.value.altIf(isHighlighted) }
             }
         }
 
@@ -91,8 +89,8 @@ object LeaderboardCommand : StatsCommand("leaderboard") {
         registerPageAction(max = leaderboard.pageCount) { newPage -> sendLeaderboard(stat, highlightedName, newPage) }
     }
 
-    fun formatStatNameWithSuggestion(statFormatter: StatFormatter<*>) = statFormatter.name.build {
+    fun formatStatNameWithSuggestion(stat: StatSource) = stat.formatNameText().build {
         hoverEvent = HoverEvent(HoverEvent.Action.SHOW_TEXT, Text.translatable("playerstatistics.command.leaderboard.hint"))
-        clickEvent = ClickEvent(ClickEvent.Action.SUGGEST_COMMAND, formatCommand(statFormatter.commandArguments))
+        clickEvent = ClickEvent(ClickEvent.Action.SUGGEST_COMMAND, formatCommandString(stat.formatCommandArgs()))
     }
 }

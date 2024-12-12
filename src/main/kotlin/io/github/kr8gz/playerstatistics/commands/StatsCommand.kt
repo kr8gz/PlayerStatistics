@@ -1,23 +1,19 @@
 package io.github.kr8gz.playerstatistics.commands
 
 import com.mojang.brigadier.context.CommandContext
-import com.mojang.brigadier.exceptions.CommandExceptionType
-import com.mojang.brigadier.exceptions.CommandSyntaxException
 import io.github.kr8gz.playerstatistics.database.Database
 import io.github.kr8gz.playerstatistics.database.Players
 import io.github.kr8gz.playerstatistics.database.Statistics
 import io.github.kr8gz.playerstatistics.extensions.Identifier.toShortString
 import io.github.kr8gz.playerstatistics.extensions.ServerCommandSource.uuid
+import io.github.kr8gz.playerstatistics.util.MinecraftStatSource
+import io.github.kr8gz.playerstatistics.util.StatSource
 import net.minecraft.command.CommandRegistryAccess
 import net.minecraft.registry.Registries
 import net.minecraft.server.command.ServerCommandSource
-import net.minecraft.stat.Stat
 import net.minecraft.stat.StatType
 import net.minecraft.stat.Stats
-import net.minecraft.text.Text
-import net.silkmc.silk.commands.ArgumentResolver
-import net.silkmc.silk.commands.LiteralCommandBuilder
-import net.silkmc.silk.commands.command
+import net.silkmc.silk.commands.*
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
 
@@ -51,27 +47,11 @@ abstract class StatsCommand(private val name: String) {
 
     protected abstract fun LiteralCommandBuilder<ServerCommandSource>.build()
 
-    protected enum class Exceptions(private val translationKey: String) : CommandExceptionType {
-        NO_DATA("playerstatistics.no_data"),
-        UNKNOWN_PLAYER("playerstatistics.argument.player.unknown"),
-
-        // Database
-        DATABASE_INITIALIZING("playerstatistics.database.initializing"),
-        ALREADY_RUNNING("playerstatistics.database.running"),
-
-        // Sharing
-        SHARE_UNAVAILABLE("playerstatistics.command.share.unavailable"),
-        ALREADY_SHARED("playerstatistics.command.share.already_shared");
-
-        fun getMessage(vararg args: Any?): Text = Text.translatable(translationKey, *args)
-        fun create(vararg args: Any?) = CommandSyntaxException(this, getMessage(*args))
-    }
-
     private val databaseUsers = ConcurrentHashMap.newKeySet<UUID>()
 
     protected fun CommandContext<ServerCommandSource>.usingDatabase(command: suspend () -> Unit) {
-        if (!Database.Initializer.isCompleted) throw Exceptions.DATABASE_INITIALIZING.create()
-        if (!databaseUsers.add(source.uuid)) throw Exceptions.ALREADY_RUNNING.create()
+        if (!Database.Initializer.isCompleted) throw CommandExceptions.DATABASE_INITIALIZING.create()
+        if (!databaseUsers.add(source.uuid)) throw CommandExceptions.ALREADY_RUNNING.create()
 
         Database.transaction {
             source.server.playerManager.playerList.forEach {
@@ -81,8 +61,8 @@ abstract class StatsCommand(private val name: String) {
         }
     }
 
-    protected fun CommandBuilder.statArgument(builder: ArgumentBuilder<Stat<*>?>) {
-        fun <T> CommandBuilder.addArgumentsForStatType(statType: StatType<T>) {
+    protected fun CommandBuilder.statArgument(vararg additionalSources: StatSource, builder: ArgumentBuilder<StatSource?>) {
+        fun <T> CommandBuilder.addOptionsForType(statType: StatType<T>) {
             val argumentType = { registryAccess: CommandRegistryAccess ->
                 RegistryEntryArgumentType.registryEntry(registryAccess, statType.registry.key)
             }
@@ -95,26 +75,37 @@ abstract class StatsCommand(private val name: String) {
                         }.map { it.key.value }
                     }
                     Stats.CUSTOM -> suggests {
-                        statType.registry.ids.map { it.toShortString() }
+                        Stats.CUSTOM.registry.ids.map { it.toShortString() }
                     }
                 }
-                builder { statType.getOrCreateStat(stat().value()) }
+                builder { MinecraftStatSource(statType.getOrCreateStat(stat().value())) }
             }
         }
 
-        Registries.STAT_TYPE.entrySet.sortedBy { it.key.value }.forEach { (key, statType) ->
-            when (statType) {
-                Stats.CUSTOM -> addArgumentsForStatType(statType) // add custom stats directly to the outer level to make them easier to find
-                else -> literal(key.value.toShortString()) { addArgumentsForStatType(statType) }
+        addOptionsForType(Stats.CUSTOM) // add custom stats directly to the outer level to make them easier to find
+
+        val statTypes = Registries.STAT_TYPE.entrySet
+            .filter { (_, type) -> type != Stats.CUSTOM } // don't add them again
+            .sortedBy { it.key.value }
+
+        statTypes.forEach { (key, statType) ->
+            literal(key.value.toShortString()) {
+                addOptionsForType(statType)
             }
         }
 
         literal("random") {
-            builder { Statistics.statList.randomOrNull() }
+            builder { Statistics.storedStats.randomOrNull()?.let(::MinecraftStatSource) }
+        }
+
+        for (source in additionalSources) {
+            literal(source.formatCommandArgs()) {
+                builder { source }
+            }
         }
     }
 
-    protected inline fun CommandBuilder.optionalPlayerArgument(builder: ArgumentBuilder<String?>) {
+    protected fun CommandBuilder.optionalPlayerArgument(builder: ArgumentBuilder<String?>) {
         argument<String>("player") { player ->
             suggests { Players.nameList }
             builder(player)
@@ -122,7 +113,7 @@ abstract class StatsCommand(private val name: String) {
         builder { null }
     }
 
-    fun formatCommand(vararg args: Any) = buildString {
+    fun formatCommandString(vararg args: Any) = buildString {
         append("/${Root.name} $name")
         args.forEach { append(" $it") }
     }

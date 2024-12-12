@@ -69,15 +69,15 @@ Other players will be able to see what you shared by hovering over the green `[H
 > <details>
 > <summary>Advanced usage examples</summary>
 > 
-> ### Random statistics
-> Instead of specifying a statistic, you can also let the mod choose one for you:
->
-> ![Random leaderboard](gallery/random-leaderboard.png)
-> 
 > ### Precise values
 > Hovering over certain types of values will show them in more precise units:
 > 
 > ![Example of precise value in hover text](gallery/hover-value.png)
+> 
+> ### Random statistics
+> Instead of specifying a statistic, you can also let the mod choose one for you:
+> 
+> ![Random leaderboard](gallery/random-leaderboard.png)
 > 
 > ### Remove highlight
 > You can create command output without any highlight by specifying a non-existent player name, such as `-`:

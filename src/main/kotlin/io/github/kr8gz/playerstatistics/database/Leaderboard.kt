@@ -1,7 +1,7 @@
 package io.github.kr8gz.playerstatistics.database
 
+import io.github.kr8gz.playerstatistics.util.*
 import kotlinx.coroutines.coroutineScope
-import net.minecraft.stat.Stat
 import java.sql.ResultSet
 
 class Leaderboard<T>(val pageEntries: List<Entry<T>>, val pageCount: Int) {
@@ -21,23 +21,37 @@ class Leaderboard<T>(val pageEntries: List<Entry<T>>, val pageCount: Int) {
         const val pageSize = 8
 
         private inline fun <T> ResultSet.generateLeaderboard(crossinline entryBuilder: ResultSet.() -> Entry<T>?): Leaderboard<T>? {
-            return mutableListOf<Entry<T>>().takeIf { next() }?.let { entries ->
-                val pages = getInt(pageCount)
-                do entryBuilder()?.let(entries::add) while (next())
-                Leaderboard(entries, pages)
-            }
+            if (!next()) return null
+            val entries = mutableListOf<Entry<T>>()
+            val pages = getInt(pageCount)
+            do entryBuilder()?.let(entries::add) while (next())
+            return Leaderboard(entries, pages)
         }
 
-        /** @return key = player name */
-        suspend fun forStat(stat: Stat<*>, highlightedName: String? = null, page: Int): Leaderboard<String>? = coroutineScope {
-            Database.prepareStatement("""
-                WITH leaderboard AS (
-                    SELECT *, ROW_NUMBER() OVER (ORDER BY $rank, ${Statistics.player}) $pos
-                    FROM $Leaderboard
-                    JOIN $Players ON ${Players.uuid} = ${Statistics.player}
-                    WHERE ${Statistics.stat} = ?
-                ),
-                highlight AS (SELECT $pos highlight FROM leaderboard WHERE ${Players.name} = ? LIMIT 1),
+        /** @return key = [Players.name] */
+        suspend fun forStat(stat: StatSource, highlightedName: String? = null, page: Int): Leaderboard<String>? = coroutineScope {
+            Database.prepareStatement { """
+                WITH leaderboard AS (${when (stat) { // selected columns: pos, rank, name, value
+                    ComputedStatSource.TOP_STATS -> """
+                        SELECT
+                            ROW_NUMBER() OVER (ORDER BY COUNT(${Statistics.stat}) DESC, ${Players.name}) $pos,
+                            RANK() OVER (ORDER BY COUNT(${Statistics.stat}) DESC) $rank,
+                            ${Players.name}, COUNT(${Statistics.stat}) ${Statistics.value}
+                        FROM $Leaderboard
+                        JOIN $Players ON ${Players.uuid} = ${Statistics.player}
+                        WHERE $rank = 1 AND ${Statistics.value} > 0
+                        GROUP BY ${Statistics.player}
+                    """
+                    else -> """
+                        SELECT
+                            ROW_NUMBER() OVER (ORDER BY $rank, ${Players.name}) $pos,
+                            $rank, ${Players.name}, ${Statistics.value}
+                        FROM $Leaderboard
+                        JOIN $Players ON ${Players.uuid} = ${Statistics.player}
+                        WHERE ${Statistics.stat} = ${param(stat.databaseKey)} AND ${Statistics.value} > 0
+                    """
+                }}),
+                highlight AS (SELECT $pos highlight FROM leaderboard WHERE ${Players.name} = ${param(highlightedName)} LIMIT 1),
                 page_offset AS (SELECT $pageSize - EXISTS(SELECT 1 FROM highlight) page_offset),
                 $pageCount AS (
                     SELECT MAX(highlight IS NOT NULL, CEIL(1.0 * (MAX($pos) - (highlight IS NOT NULL)) / page_offset)) $pageCount
@@ -49,23 +63,19 @@ class Leaderboard<T>(val pageEntries: List<Entry<T>>, val pageCount: Int) {
                   AND $pos <= page_offset * $page       + COALESCE(highlight <= page_offset * $page,       0)
                    OR $pos = highlight
                 ORDER BY $pos
-            """).run {
-                setString(1, stat.name)
-                setString(2, highlightedName)
-                executeQuery()
-            }.generateLeaderboard {
+            """ }.executeQuery().generateLeaderboard {
                 Entry(getInt(pos), getInt(rank), getString(Players.name), getInt(Statistics.value))
             }
         }
 
-        /** @return key = stat */
-        suspend fun forPlayer(name: String, page: Int): Leaderboard<Stat<*>>? = coroutineScope {
-            Database.prepareStatement("""
+        /** @return key = [Statistics.stat] */
+        suspend fun forPlayer(name: String, page: Int): Leaderboard<StatSource>? = coroutineScope {
+            Database.prepareStatement { """
                 WITH leaderboard AS (
                     SELECT *, ROW_NUMBER() OVER (ORDER BY $rank, ${Statistics.value} DESC) $pos
                     FROM $Leaderboard
                     JOIN $Players ON ${Players.uuid} = ${Statistics.player}
-                    WHERE ${Players.name} = ? AND ${Statistics.value} > 0
+                    WHERE ${Players.name} = ${param(name)} AND ${Statistics.value} > 0
                 )
                 SELECT
                     $pos, $rank, ${Statistics.stat}, ${Statistics.value},
@@ -74,12 +84,9 @@ class Leaderboard<T>(val pageEntries: List<Entry<T>>, val pageCount: Int) {
                 WHERE $pos > ${pageSize * (page - 1)}
                 ORDER BY $pos
                 LIMIT $pageSize
-            """).run {
-                setString(1, name)
-                executeQuery()
-            }.generateLeaderboard {
-                Statistics.parseStat(getString(Statistics.stat))?.let { stat ->
-                    Entry(getInt(pos), getInt(rank), stat, getInt(Statistics.value))
+            """ }.executeQuery().generateLeaderboard {
+                parseStat(getString(Statistics.stat))?.let { stat ->
+                    Entry(getInt(pos), getInt(rank), MinecraftStatSource(stat), getInt(Statistics.value))
                 }
             }
         }

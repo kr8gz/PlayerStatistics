@@ -30,5 +30,6 @@
   "playerstatistics.stat_type.minecraft.used": "%s benutzt",
   "playerstatistics.unit.blocks": "%s Blöcke",
   "playerstatistics.unit.damage": "%s Schaden",
-  "playerstatistics.unit.ticks": "%s Ticks"
+  "playerstatistics.unit.ticks": "%s Ticks",
+  "stat.playerstatistics.top_stats": "Anzahl von Top-Statistiken"
 }

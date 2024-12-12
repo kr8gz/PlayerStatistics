@@ -41,10 +41,10 @@ object ShareCommand : StatsCommand("share") {
     private fun ServerCommandSource.shareStoredData(code: UUID? = null) {
         val playerStorage = playerShareStorage.getOrCreate(uuid)
 
-        val actualCode = code ?: playerStorage.keys.lastOrNull() ?: throw Exceptions.NO_DATA.create()
-        val data = playerStorage[actualCode] ?: throw Exceptions.SHARE_UNAVAILABLE.create()
+        val actualCode = code ?: playerStorage.keys.lastOrNull() ?: throw CommandExceptions.NO_DATA.create()
+        val data = playerStorage[actualCode] ?: throw CommandExceptions.SHARE_UNAVAILABLE.create()
 
-        if (data.shared) throw Exceptions.ALREADY_SHARED.create()
+        if (data.shared) throw CommandExceptions.ALREADY_SHARED.create()
 
         val message = run {
             val sharerName = (entity?.displayName ?: literalText(name)).build { color = config.colors.text.alt }

@@ -23,11 +23,11 @@ object PageCommand : StatsCommand("page") {
     fun ServerCommandSource.registerPageAction(max: Int, action: PageAction) {
         pageActions[uuid] = { page ->
             if (page <= max) action(page)
-            else sendError(Exceptions.NO_DATA.getMessage())
+            else sendError(CommandExceptions.NO_DATA.getMessage())
         }
     }
 
     private suspend fun ServerCommandSource.runPageAction(page: Int) {
-        pageActions[uuid]?.let { it(page) } ?: sendError(Exceptions.NO_DATA.getMessage())
+        pageActions[uuid]?.let { it(page) } ?: sendError(CommandExceptions.NO_DATA.getMessage())
     }
 }

@@ -35,8 +35,24 @@ object Database {
         }
     }
 
-    // don't expose the connection object
-    fun prepareStatement(sql: String): PreparedStatement = connection.prepareStatement(sql)
+    interface StatementBuilder {
+        fun param(value: Any?): String
+    }
+
+    fun prepareStatement(queryBuilder: StatementBuilder.() -> String): PreparedStatement {
+        val params = mutableListOf<Any?>()
+        val builder = object : StatementBuilder {
+            override fun param(value: Any?): String {
+                params += value
+                return "?"
+            }
+        }
+        return builder.run {
+            connection.prepareStatement(queryBuilder()).apply {
+                params.forEachIndexed { index, value -> setObject(index + 1, value) }
+            }
+        }
+    }
 
     class Initializer<T : Any>(block: suspend Statement.() -> T) {
         private lateinit var value: T
@@ -106,11 +122,11 @@ object Database {
 
     abstract class Table(name: String) : Object(name) {
         protected abstract val schema: List<String>
-        override fun createSQL() = "CREATE TABLE IF NOT EXISTS $this (${schema.joinToString()})"
+        final override fun createSQL() = "CREATE TABLE IF NOT EXISTS $this (${schema.joinToString()})"
     }
 
     abstract class View(name: String) : Object(name) {
         protected abstract val definition: String
-        override fun createSQL() = "CREATE VIEW IF NOT EXISTS $this AS $definition"
+        final override fun createSQL() = "CREATE VIEW IF NOT EXISTS $this AS $definition"
     }
 }

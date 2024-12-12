@@ -8,9 +8,8 @@ import io.github.kr8gz.playerstatistics.database.Players
 import io.github.kr8gz.playerstatistics.extensions.ServerCommandSource.sendFeedback
 import io.github.kr8gz.playerstatistics.extensions.Text.build
 import io.github.kr8gz.playerstatistics.extensions.Text.newLine
-import io.github.kr8gz.playerstatistics.messages.Components
-import io.github.kr8gz.playerstatistics.messages.Components.withPageDisplay
-import io.github.kr8gz.playerstatistics.messages.StatFormatter
+import io.github.kr8gz.playerstatistics.format.Components
+import io.github.kr8gz.playerstatistics.format.Components.withPageDisplay
 import net.minecraft.server.command.ServerCommandSource
 import net.minecraft.text.Text
 import net.minecraft.text.Texts
@@ -28,22 +27,17 @@ object PlayerTopStatsCommand : StatsCommand("top") {
     }
 
     private suspend fun ServerCommandSource.sendPlayerTopStats(playerName: String, page: Int = 1) {
-        val leaderboard = Leaderboard.forPlayer(playerName, page)
-            ?: return sendError(Exceptions.UNKNOWN_PLAYER.getMessage(playerName))
+        val player = Players.fixName(playerName) ?: return sendError(CommandExceptions.UNKNOWN_PLAYER.getMessage(playerName))
+        val leaderboard = Leaderboard.forPlayer(player, page) ?: return sendError(CommandExceptions.NO_DATA.getMessage())
 
-        val label = run {
-            val player = Players.fixName(playerName) ?: playerName
-            Text.translatable("playerstatistics.command.top", player).build { color = config.colors.text.alt }
-        }
+        val label = Text.translatable("playerstatistics.command.top", player).build { color = config.colors.text.alt }
 
         val entries = leaderboard.pageEntries.map { (_, rank, stat, value) ->
             literalText {
-                val statFormatter = StatFormatter(stat)
                 color = config.colors.extra.main
-
                 text(" » "); text(Text.translatable("playerstatistics.command.top.rank", rank)) { color = config.colors.rank.main }
-                text(" ");   text(LeaderboardCommand.formatStatNameWithSuggestion(statFormatter)) { color = config.colors.name.main }
-                text(" - "); text(statFormatter.formatValue(value)) { color = config.colors.value.main }
+                text(" ");   text(LeaderboardCommand.formatStatNameWithSuggestion(stat)) { color = config.colors.name.main }
+                text(" - "); text(stat.formatValueText(value)) { color = config.colors.value.main }
             }
         }
 

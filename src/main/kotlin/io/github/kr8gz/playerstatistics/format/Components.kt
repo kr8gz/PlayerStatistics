@@ -1,4 +1,4 @@
-package io.github.kr8gz.playerstatistics.messages
+package io.github.kr8gz.playerstatistics.format
 
 import io.github.kr8gz.playerstatistics.commands.PageCommand
 import io.github.kr8gz.playerstatistics.commands.ShareCommand
@@ -12,7 +12,7 @@ import java.util.UUID
 object Components {
     fun shareButton(code: UUID) = Texts.bracketed(Text.translatable("playerstatistics.command.share")).build {
         hoverEvent = HoverEvent(HoverEvent.Action.SHOW_TEXT, Text.translatable("playerstatistics.command.share.hint"))
-        clickEvent = ClickEvent(ClickEvent.Action.RUN_COMMAND, ShareCommand.formatCommand(code))
+        clickEvent = ClickEvent(ClickEvent.Action.RUN_COMMAND, ShareCommand.formatCommandString(code))
         color = config.colors.action
     }
 
@@ -23,7 +23,7 @@ object Components {
             color = config.colors.footer.altIf(active)
             if (active) {
                 hoverEvent = HoverEvent(HoverEvent.Action.SHOW_TEXT, Text.translatable(translationKey))
-                clickEvent = ClickEvent(ClickEvent.Action.RUN_COMMAND, PageCommand.formatCommand(newPage))
+                clickEvent = ClickEvent(ClickEvent.Action.RUN_COMMAND, PageCommand.formatCommandString(newPage))
             }
         }
 
